@@ -1,0 +1,6 @@
+nat a = 5;
+nat b = 7;
+class extends Object;
+_ERROR;
+nat afterError;
+() ; { } ; || |; - + * > . ! 

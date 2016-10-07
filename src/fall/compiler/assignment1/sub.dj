@@ -1,0 +1,171 @@
+// Created by atuladhar on 8/28/16.
+// Pledge: I pledge my Honor that I have not cheated, and will not cheat, on this assignment
+// Name: Anwesh Tuladhar
+
+// Node: Represents a single element of the list.
+class Node extends Object {
+  nat val;
+  Node next;
+}
+
+// List implementation
+// A simple Java List like class with ability to:
+// * add (to the head of the list),
+// * search for the presence of a value in the list
+// * iterate through the list one by one
+// * query end of list
+
+class MyList extends Object {
+  nat size;
+  Node head;
+  Node searchNode;
+
+  // Resets the searchNode to the head of the List.
+  nat resetSearchNode(nat unused) {
+    this.searchNode = this.head;
+    0;
+  }
+
+  // Inserts value to the head of the list. Increments the size of the list simultaneously.
+  // @param v  => value to be inserted in the list
+  nat add(nat v) {
+    if(size == 0){
+      this.head = new Node();
+      this.head.val = v;
+      this.head.next = null;
+      resetSearchNode(0);
+      0;
+    } else {
+      Node temp = new Node();
+      //Make a copy of current this.head in temp.
+      temp.val = this.head.val;
+      temp.next = this.head.next;
+      //Update this.head to new value and point next to temp.
+      this.head.val = v;
+      this.head.next = temp;
+      0;
+    };
+    //increment size of list.
+    size = size + 1;
+  }
+
+  // @return  => v, the current value of searchNode and increments the searchNode simultaneously.
+  nat next(nat unused) {
+    nat v;
+    v = this.searchNode.val;
+    this.searchNode = this.searchNode.next;
+    v;
+  }
+
+  // Check if the current value of searchNode is null.
+  // @return  => 0 if current value is null else 1.
+  nat hasNext(nat unused) {
+    nat toReturn;
+    if(this.searchNode == null) {
+      toReturn = 0;
+    } else {
+      toReturn = 1;
+    };
+    toReturn;
+  }
+
+  // Search for the value v in the List beginning from the current searchNode position.
+  // @param v  => value to be searched for.
+  nat find(nat v) {
+    nat foundCurrent;
+    foundCurrent = 0;
+    // Equivalent Logic: (foundCurrent == 0 && this.hasNext(0) == 1)
+    for (0 ; !(foundCurrent > 0 || this.hasNext(0) == 0); 0) {
+      if (this.next(0) == v) {
+        foundCurrent = 1;
+      } else {
+        foundCurrent = 0;
+      };
+    };
+    foundCurrent;
+  }
+
+  // Check if the other List is a sub sequence of this List.
+  // @param other  => The List to compare
+  // @return  => 1 if other List is a sub sequence of this List else 0.
+  nat checkSubSequence(MyList other) {
+    nat isSubSeq;
+
+    if(other.size > this.size) {
+      isSubSeq = 0;
+    } else {
+      isSubSeq = this.find(other.next(0));
+
+      // Equivalent Logic: ( isSubSeq == 1 && other.hasNext(0) == 1 )
+      for (0; !(isSubSeq == 0 || other.hasNext(0) == 0); 0) {
+        isSubSeq = this.find(other.next(0));
+      };
+      this.resetSearchNode(0);
+      other.resetSearchNode(0);
+    };
+    isSubSeq;
+  }
+
+  // Check if the other List is a sub string of this List.
+  // @param other  => The List to compare
+  // @return  => 1 if other List is a sub string of this List else 0.
+  nat checkSubString(MyList other) {
+    nat isSubString;
+
+    if(other.size > this.size) {
+      isSubString = 0;
+    } else {
+      isSubString = this.find(other.next(0));
+
+      // Equivalent Logic: ( isSubString == 1 && other.hasNext(0) == 1 )
+      for (0; !( isSubString == 0 || other.hasNext(0) == 0 ); 0 ) {
+        // Equivalent Logic: (this.hasNext(0) == 1 && this.next(0) == other.next(0))
+        if (!(this.hasNext(0) == 0 || !(this.next(0) == other.next(0)))) {
+          isSubString = 1;
+        } else {
+          isSubString = 0;
+        };
+      };
+
+      this.resetSearchNode(0);
+      other.resetSearchNode(0);
+    };
+    isSubString;
+  }
+}
+
+main {
+  nat i;
+  nat res;
+  MyList firstWord;
+  MyList secondWord;
+
+  firstWord = new MyList();
+
+  // Input first word into List firstWord
+  for(i = readNat(); i != 0; i = readNat()) {
+    firstWord.add(i);
+  };
+
+  if(firstWord.size > 0) {
+    // Continuously input second word and check for sub sequence and sub string until user enters 0.
+    for(i = readNat(); i != 0; i = readNat()) {
+      secondWord = new MyList();
+
+      // Input second word into List secondWord
+      for(0; i != 0; i = readNat()) {
+        secondWord.add(i);
+      };
+
+      // Check if secondWord is sub sequence of firstWord
+      res = firstWord.checkSubSequence(secondWord);
+      printNat(res);
+      // Check if secondWord is sub string of firstWord
+      res = firstWord.checkSubString(secondWord);
+      printNat(res);
+    };
+    0;
+  } else {
+    0;
+  };
+}

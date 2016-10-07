@@ -1,0 +1,66 @@
+; Created by atuladhar on 8/29/16.
+; Pledge: I pledge my Honor that I have not cheated, and will not cheat, on this assignment
+; Name: Anwesh Tuladhar
+            mov 0 0             ; move value 0 into register 0. Maintain index for first word.
+            mov 1 0             ; move value 0 into register 1. Maintain index for second word.
+            mov 2 1             ; move value 1 into register 2. To increment counters by 1.
+            mov 3 0             ; move value 0 into register 3. To compare with 0 to jump
+#READFIRST: rdn 4               ; read input into register 4.
+            beq 4 3 #READSEC    ; branch on input == 0 to #READSEC. End of first word.
+            add 0 0 2           ; increment index of first word by 1.
+            str 0 0 4           ; store the input(R[4]) into M[R[0] + 0].
+            jmp 3 #READFIRST    ; continue reading first word.
+#READSEC:   beq 0 3 #END        ; jump to end if first word is empty.
+            rdn 4               ; read the second word.
+            beq 4 3 #CHECK      ; jump to #CHECK if initial value entered is 0. end of second word.
+            add 1 1 2           ; increment index of second word by 1
+            str 1 32768 4       ; store the input(R[4]) into M[R[0] + 32768]. storing second word.
+            jmp 3 #READSEC      ; if input is not 0, continue reading first word.
+#CHECK:     beq 1 3 #END        ; jump to end if second word is empty
+            mov 4 0             ; empty register 4 to use as isSubSeq flag.
+            add 5 0 3           ; move final index of first word into register 5. (R[5] = R[0] + R[3] = R[0])
+            str 3 0 1           ; save/store final index of second word into memory(needed for sub string check)
+            blt 0 1 #PRINTSEQ   ; branch if size of first word is less than second word.
+#CHECKSEQ:  lod 7 1 32768       ; load second word into register 7
+            sub 1 1 2           ; subtract second word counter
+                                ; find second word in first word.
+#FIND:      lod 6 5 0           ; load first word.
+            sub 5 5 2           ; decrement first word counter.
+            beq 6 7 #SETISSEQ   ; set isSubSeq to true.
+            blt 3 5 #FIND       ; branch if 0 is less than size of first word. First word remaining.
+            mov 4 0             ; cannot find second word in first. set/reset isSubSeq to 0.
+            jmp 3 #PRINTSEQ     ; jump to end of check seq.
+#SETISSEQ:  mov 4 1             ; set isSubSeq to true.
+            blt 3 1 #CHECKSEQ   ; branch if 0 is less than size of second word. Second word remaining.
+#PRINTSEQ:  ptn 4               ; print the value of isSubSeq.
+            blt 0 1 #PRINTSTR   ; branch if size of first word is less than second word.
+                                ; Reset sizes for sub string check.
+            add 5 0 3           ; move final index of first word into register 5. (R[5] = R[0] + R[3] = R[0])
+            lod 1 3 0           ; reload size of second word into register 1
+            mov 4 0             ; empty register 4 to use as isSubSTR flag.
+#CHECKSTR:  lod 7 1 32768       ; load second word into register 7 for sub string check
+            sub 1 1 2           ; subtract second word counter
+                                ; find the beginning of second word in first word.
+#FINDFIRST: lod 6 5 0           ; load first word.
+            sub 5 5 2           ; decrement first word counter.
+            beq 6 7 #SETISSTR   ; set isSubSTR to true.
+            blt 3 5 #FINDFIRST  ; branch if 0 is less than size of first word. First word remaining.
+            mov 4 0             ; cannot find second word in first. reset isSubSTR to 0;
+            jmp 3 #PRINTSTR     ; jump to end of check STR
+#SETISSTR:  mov 4 1             ; set isSubSTR flag to true.
+            beq 1 3 #PRINTSTR   ; branch if end of second word.
+#FINDREST:  lod 7 1 32768       ; load second word into register 7
+            sub 1 1 2           ; subtract second word counter
+            lod 6 5 0           ; load first word.
+            sub 5 5 2           ; decrement first word counter.
+            beq 6 7 #CHKSIZE2   ; branch if current elements of the two words is same.
+            jmp 3 #NOTSTR       ; if here, means not a sub string
+#CHKSIZE2:  blt 3 1 #CHKSIZE1   ; check if 0 is less than size of second word. Second word remaining.
+            jmp 3 #PRINTSTR     ; this means this is a substring.
+#CHKSIZE1:  blt 3 5 #FINDREST   ; if secondWord remaining and first word remaining, FINDREST
+                                ; if here, secondWord left but first finished. so not a sub String.
+#NOTSTR:    mov 4 0             ; reset isSubSTR to false.
+#PRINTSTR:  ptn 4               ; print isSubSTR
+            mov 1 0             ; reset second word size to 0.
+            jmp 3 #READSEC      ; read new second word
+#END:       hlt 0
