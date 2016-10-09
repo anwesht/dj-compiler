@@ -38,8 +38,10 @@ pgm : pgmList ENDOFFILE
 pgmList : classDeclList main
         ;
 
-main : MAIN LBRACE varDeclList exprList RBRACE
+main : MAIN body
      ;
+
+body : LBRACE varDeclList exprList RBRACE
 
 classDeclList : classDeclList classDecl
               |
@@ -53,12 +55,20 @@ exprList : exprList expr SEMICOLON
          | expr SEMICOLON
          ;
 
-classDecl : CLASS ID EXTENDS super LBRACE RBRACE
+classDecl : CLASS ID EXTENDS super LBRACE varDeclList RBRACE
+          | CLASS ID EXTENDS super LBRACE varDeclList methodDeclList RBRACE
           ;
 
 super : ID
       | OBJECT
       ;
+
+methodDeclList : methodDeclList methodDecl
+               | methodDecl
+               ;
+
+methodDecl : typeDecl ID LPAREN typeDecl ID RPAREN body
+           ;
 
 varDecl : typeDecl ID SEMICOLON
         ;
@@ -126,6 +136,7 @@ ifElseExpr : IF LPAREN expr RPAREN LBRACE exprList RBRACE ELSE LBRACE exprList R
 
 forExpr : FOR LPAREN expr SEMICOLON expr SEMICOLON expr RPAREN LBRACE exprList RBRACE
         ;
+
 %%
 
 int main(int argc, char **argv) {
@@ -140,165 +151,4 @@ int main(int argc, char **argv) {
   }
   /* parse the input program */
   return yyparse();
-
-  /*
-  expr : LPAREN expr RPAREN
-       | expr plusminus term
-       | term
-       | assignExpr
-       | printNatExpr
-       ;
-
-  term : term TIMES factor
-       | factor
-       ;
-
-  plusminus : PLUS
-            | MINUS
-            ;
-
-=====
-expr : LPAREN expr RPAREN
-     | dotIdExpr
-     | expr op expr
-     | assignExpr
-     | methodCallExpr
-     | dotMethodCallExpr
-     | printNatExpr
-     | factor
-     ;
-
-     ===
-
-     expr : LPAREN expr RPAREN
-          | dotIdExpr
-          | expr op expr
-          | assignExpr
-          | methodCallExpr
-          | dotMethodCallExpr
-          | printNatExpr
-          | factor
-          ;
-  */
-
-  /*
-  varDecl : NATTYPE ID
-          ;
-
-  expr : expr plusminus term
-       | term
-       | assignExpr
-       | printNatExpr
-       ;
-
-  term : term TIMES factor
-       | factor
-       ;
-
-  plusminus : PLUS
-            | MINUS
-            ;
-
-  assignExpr : ID ASSIGN expr
-             ;
-
-  methodCallExpr : ID LPAREN expr RPAREN
-                 ;
-
-  dotIdExpr : expr DOT ID
-            ;
-
-  dotMethodCallExpr : expr DOT methodCallExpr
-                    ;
-
-  printNatExpr : PRINTNAT LPAREN expr RPAREN
-               ;
-
-  factor : NATLITERAL
-         | ID
-         | LPAREN expr RPAREN
-         ;
-
-  op : PLUS
-     | MINUS
-     | TIMES
-     ;
-  */
-
-  /*
-  pgm : pgmList ENDOFFILE
-        { return 0; }
-      ;
-
-  pgmList : classDeclList main
-          ;
-
-  main : MAIN LBRACE varDeclList exprList RBRACE
-       ;
-
-  classDeclList : classDeclList classDecl
-                |
-                ;
-
-  varDeclList : varDeclList varDecl SEMICOLON
-              |
-              ;
-
-  exprList : exprList expr SEMICOLON
-           |
-           ;
-
-  classDecl : CLASS ID EXTENDS super LBRACE RBRACE
-            ;
-
-  super : ID
-        | OBJECT
-        ;
-
-  varDecl : NATTYPE ID
-          ;
-
-  expr : expr EQUALITY expr
-       | expr GREATER expr
-       | expr OR expr
-       | expr plusminus term
-       | term
-       | dotIdExpr
-       | assignExpr
-       | methodCallExpr
-       | dotMethodCallExpr
-       | printNatExpr
-       ;
-
-  plusminus : PLUS
-            | MINUS
-            ;
-
-  term : term TIMES factor
-       | factor
-       ;
-
-  factor : NATLITERAL
-         | ID
-         | LPAREN expr RPAREN
-         ;
-
-  dotIdExpr : expr DOT ID
-            ;
-
-  assignExpr : ID ASSIGN expr
-             ;
-
-  methodCallExpr : ID LPAREN expr RPAREN
-                 ;
-
-  dotMethodCallExpr : expr DOT methodCallExpr
-                    ;
-
-  printNatExpr : PRINTNAT LPAREN expr RPAREN
-               ;
-
-
-  %%
-  */
 }
