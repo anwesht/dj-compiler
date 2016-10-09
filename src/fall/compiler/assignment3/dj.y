@@ -45,12 +45,12 @@ classDeclList : classDeclList classDecl
               |
               ;
 
-varDeclList : varDeclList varDecl SEMICOLON
+varDeclList : varDeclList varDecl
             |
             ;
 
 exprList : exprList expr SEMICOLON
-         |
+         | expr SEMICOLON
          ;
 
 classDecl : CLASS ID EXTENDS super LBRACE RBRACE
@@ -60,8 +60,13 @@ super : ID
       | OBJECT
       ;
 
-varDecl : NATTYPE ID
+varDecl : typeDecl ID SEMICOLON
         ;
+
+typeDecl : NATTYPE
+         | OBJECT
+         | ID
+         ;
 
 expr : cmpExpr
      | arithmeticExpr
@@ -69,6 +74,10 @@ expr : cmpExpr
      | printNatExpr
      | readNatExpr
      | factor
+     | NUL
+     | THIS
+     | OBJECT
+     | NOT expr
      ;
 
 cmpExpr : expr EQUALITY expr
@@ -83,26 +92,21 @@ arithmeticExpr : expr PLUS expr
 
 factor : NATLITERAL
        | ID
-       | dotIdExpr
-       | methodCallExpr
+       | expr DOT ID
        | dotMethodCallExpr
        | LPAREN expr RPAREN
-       | NOT factor
        ;
 
-
-dotIdExpr : ID DOT ID
-          ;
-
-assignExpr : ID ASSIGN expr
-           | ID DOT ID ASSIGN expr
+assignExpr : expr ASSIGN expr
            ;
 
-methodCallExpr : ID LPAREN expr RPAREN
+methodCallExpr : ID LPAREN args RPAREN
                ;
 
-dotMethodCallExpr : ID DOT methodCallExpr
-                  | methodCallExpr DOT methodCallExpr
+args : expr;
+
+dotMethodCallExpr : expr DOT methodCallExpr
+                  | methodCallExpr
                   ;
 
 printNatExpr : PRINTNAT LPAREN expr RPAREN
