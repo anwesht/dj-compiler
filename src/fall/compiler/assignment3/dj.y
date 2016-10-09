@@ -1,4 +1,8 @@
 /* DJ PARSER */
+/** Created by atuladhar on 10/7/16.
+  * Pledge: I pledge my Honor that I have not cheated, and will not cheat, on this assignment
+  * Name: Anwesh Tuladhar
+  */
 
 %code provides {
   #include "lex.yy.c"
@@ -28,7 +32,6 @@
 %right NOT
 %left DOT
 
-
 %%
 
 pgm : pgmList ENDOFFILE
@@ -47,14 +50,6 @@ classDeclList : classDeclList classDecl
               |
               ;
 
-varDeclList : varDeclList varDecl
-            |
-            ;
-
-exprList : exprList expr SEMICOLON
-         | expr SEMICOLON
-         ;
-
 classDecl : CLASS ID EXTENDS super LBRACE varDeclList RBRACE
           | CLASS ID EXTENDS super LBRACE varDeclList methodDeclList RBRACE
           ;
@@ -63,6 +58,13 @@ super : ID
       | OBJECT
       ;
 
+varDeclList : varDeclList varDecl
+            |
+            ;
+
+varDecl : typeDecl ID SEMICOLON
+        ;
+
 methodDeclList : methodDeclList methodDecl
                | methodDecl
                ;
@@ -70,63 +72,42 @@ methodDeclList : methodDeclList methodDecl
 methodDecl : typeDecl ID LPAREN typeDecl ID RPAREN body
            ;
 
-varDecl : typeDecl ID SEMICOLON
-        ;
-
 typeDecl : NATTYPE
          | OBJECT
          | ID
          ;
 
-expr : cmpExpr
-     | arithmeticExpr
+exprList : exprList expr SEMICOLON
+         | expr SEMICOLON
+         ;
+
+expr : arithmeticExpr
+     | cmpExpr
+     | NOT expr
      | assignExpr
+     | constructorExpr
+     | ifElseExpr
+     | forExpr
      | printNatExpr
      | readNatExpr
      | factor
      | NUL
      | THIS
      | OBJECT
-     | NOT expr
-     | constructorExpr
-     | ifElseExpr
-     | forExpr
      ;
-
-cmpExpr : expr EQUALITY expr
-        | expr GREATER expr
-        | expr OR expr
-        ;
 
 arithmeticExpr : expr PLUS expr
                | expr MINUS expr
                | expr TIMES expr
                ;
 
-factor : NATLITERAL
-       | ID
-       | expr DOT ID
-       | dotMethodCallExpr
-       | LPAREN expr RPAREN
-       ;
+cmpExpr : expr EQUALITY expr
+        | expr GREATER expr
+        | expr OR expr
+        ;
 
 assignExpr : expr ASSIGN expr
            ;
-
-methodCallExpr : ID LPAREN args RPAREN
-               ;
-
-args : expr;
-
-dotMethodCallExpr : expr DOT methodCallExpr
-                  | methodCallExpr
-                  ;
-
-printNatExpr : PRINTNAT LPAREN expr RPAREN
-             ;
-
-readNatExpr : READNAT LPAREN RPAREN
-            ;
 
 constructorExpr : NEW ID LPAREN RPAREN
                 ;
@@ -136,6 +117,26 @@ ifElseExpr : IF LPAREN expr RPAREN LBRACE exprList RBRACE ELSE LBRACE exprList R
 
 forExpr : FOR LPAREN expr SEMICOLON expr SEMICOLON expr RPAREN LBRACE exprList RBRACE
         ;
+
+printNatExpr : PRINTNAT LPAREN expr RPAREN
+             ;
+
+readNatExpr : READNAT LPAREN RPAREN
+            ;
+
+factor : NATLITERAL
+       | ID
+       | expr DOT ID
+       | dotMethodCallExpr
+       | LPAREN expr RPAREN
+       ;
+
+dotMethodCallExpr : expr DOT methodCallExpr
+                  | methodCallExpr
+                  ;
+
+methodCallExpr : ID LPAREN expr RPAREN
+               ;
 
 %%
 
