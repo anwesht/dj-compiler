@@ -68,6 +68,7 @@ expr : cmpExpr
      | assignExpr
      | printNatExpr
      | readNatExpr
+     | factor
      ;
 
 cmpExpr : expr EQUALITY expr
@@ -75,17 +76,10 @@ cmpExpr : expr EQUALITY expr
         | expr OR expr
         ;
 
-arithmeticExpr : expr plusminus term
-               | term
+arithmeticExpr : expr PLUS expr
+               | expr MINUS expr
+               | expr TIMES expr
                ;
-
-plusminus : PLUS
-          | MINUS
-          ;
-
-term : term TIMES factor
-     | factor
-     ;
 
 factor : NATLITERAL
        | ID
@@ -110,9 +104,6 @@ methodCallExpr : ID LPAREN expr RPAREN
 dotMethodCallExpr : ID DOT methodCallExpr
                   | methodCallExpr DOT methodCallExpr
                   ;
-
-notExpr : NOT expr
-        ;
 
 printNatExpr : PRINTNAT LPAREN expr RPAREN
              ;
