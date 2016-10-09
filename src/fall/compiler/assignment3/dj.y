@@ -78,6 +78,9 @@ expr : cmpExpr
      | THIS
      | OBJECT
      | NOT expr
+     | constructorExpr
+     | ifElseExpr
+     | forExpr
      ;
 
 cmpExpr : expr EQUALITY expr
@@ -115,6 +118,14 @@ printNatExpr : PRINTNAT LPAREN expr RPAREN
 readNatExpr : READNAT LPAREN RPAREN
             ;
 
+constructorExpr : NEW ID LPAREN RPAREN
+                ;
+
+ifElseExpr : IF LPAREN expr RPAREN LBRACE exprList RBRACE ELSE LBRACE exprList RBRACE
+           ;
+
+forExpr : FOR LPAREN expr SEMICOLON expr SEMICOLON expr RPAREN LBRACE exprList RBRACE
+        ;
 %%
 
 int main(int argc, char **argv) {
