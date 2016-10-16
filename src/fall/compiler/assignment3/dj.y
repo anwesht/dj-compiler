@@ -106,10 +106,15 @@ cmpExpr : expr EQUALITY expr
         | expr OR expr
         ;
 
-assignExpr : expr ASSIGN expr
+assignExpr : lhsExpr ASSIGN expr
            ;
 
+lhsExpr : ID
+        | expr DOT ID
+        ;
+
 constructorExpr : NEW ID LPAREN RPAREN
+                | NEW OBJECT LPAREN RPAREN
                 ;
 
 ifElseExpr : IF LPAREN expr RPAREN LBRACE exprList RBRACE ELSE LBRACE exprList RBRACE
@@ -125,8 +130,7 @@ readNatExpr : READNAT LPAREN RPAREN
             ;
 
 factor : NATLITERAL
-       | ID
-       | expr DOT ID
+       | lhsExpr
        | dotMethodCallExpr
        | LPAREN expr RPAREN
        ;

@@ -7,7 +7,7 @@
 %option noyywrap
 
 %{
-  #define DEBUG 1
+  #define DEBUG 0
   typedef YYTOKENTYPE Token;
   Token scanned(Token t);
 %}
