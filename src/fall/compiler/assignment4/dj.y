@@ -85,10 +85,11 @@ classDecl : CLASS id EXTENDS super LBRACE varDeclList RBRACE
             }
           | CLASS id EXTENDS super LBRACE varDeclList methodDeclList RBRACE
             {
-              printf("In classDecl \n");
+              printf("In classDecl with method.\n");
               $$ = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
               appendToChildrenList ($$, $4);
               appendToChildrenList ($$, $6);
+              appendToChildrenList ($$, $7);
             }
           ;
 
@@ -145,20 +146,26 @@ varDecl : typeDecl id
 
 methodDeclList : methodDeclList methodDecl
                  {
-                     printf("In classDeclList \n");
-                     appendToChildrenList ($1, $2);
+                   printf("In methodDeclList \n");
+                   if( $$ == NULL ) {
+                     $$ = newAST(METHOD_DECL_LIST, NULL, 0, NULL, yylineno);
+                   }
+                   appendToChildrenList ($$, $2);
                  }
                | methodDecl
                  {
-                   printf("in classDeclList epsilon\n");
-                   $$ = newAST(METHOD_DECL_LIST, NULL, 0, NULL, yylineno);
+                   printf("in methodDeclList epsilon\n");
+                   //if( $$ == NULL ) {
+                     $$ = newAST(METHOD_DECL_LIST, NULL, 0, NULL, yylineno);
+                   //}
+                   appendToChildrenList ($$, $1);
                  }
                ;
 
 methodDecl : typeDecl id LPAREN typeDecl id RPAREN body
              {
                printf("In methodDecl \n");
-               $$ = newAST(CLASS_DECL, $1, 0, NULL, yylineno);
+               $$ = newAST(METHOD_DECL, $1, 0, NULL, yylineno);
                appendToChildrenList ($$, $2);
                appendToChildrenList ($$, $4);
                appendToChildrenList ($$, $5);
