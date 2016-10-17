@@ -125,7 +125,9 @@ void printNodeTypeAndAttribute(ASTree *t) {
       case NEW_EXPR:                printf("NEW_EXPR "); break;
       case NULL_EXPR:               printf("NULL_EXPR "); break;
       case NAT_LITERAL_EXPR:        printf("NAT_LITERAL_EXPR(%u) ", t->natVal); break;
-      default:                      printError("unknown node type in printNodeTypeAndAttribute()");
+      default:
+        printf("%d", t->typ);
+        printError("unknown node type in printNodeTypeAndAttribute()");
     }
   printf(" (ends on line %u)", t->lineNumber);
 //  printf("End of print node type and attributes.");

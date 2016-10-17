@@ -47,7 +47,8 @@ pgm : pgmList ENDOFFILE
       { printf("In pgm\n");
         //pgmAST = newAST(PROGRAM, NULL, 0, NULL, yylineno);
         pgmAST = $1;
-        return 0; }
+        return 0;
+      }
     ;
 
 pgmList : classDeclList main
@@ -78,59 +79,104 @@ classDeclList : classDeclList classDecl
 classDecl : CLASS id EXTENDS super LBRACE varDeclList RBRACE
             {
               printf("In classDecl \n");
-              //$$ = newAST(CLASS_DECL, $1, 0, NULL, yylineno);
               $$ = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
-              //ASTree *cd = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
-
-              //appendToChildrenList ($1, newAST(AST_ID, NULL, 0, NULL, yylineno));
-              //appendToChildrenList ($$, $2);
-              //appendToChildrenList (cd, $1);
-              //appendToChildrenList (cd, newAST(OBJ_TYPE, NULL, 0, NULL, yylineno));
-              //appendToChildrenList (cd, $4);
               appendToChildrenList ($$, $4);
-              //$$ = cd;
+              appendToChildrenList ($$, $6);
             }
           | CLASS id EXTENDS super LBRACE varDeclList methodDeclList RBRACE
+            {
+              printf("In classDecl \n");
+              $$ = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
+              appendToChildrenList ($$, $4);
+              appendToChildrenList ($$, $6);
+            }
           ;
+
 id : ID
-   {
-     printf("In id.\n");
-     $$ = newAST(AST_ID, NULL, 0, yytext, yylineno);
-   }
+     {
+       printf("In id: %s \n", yytext);
+       $$ = newAST(AST_ID, NULL, 0, yytext, yylineno);
+     }
+   ;
 
 object : OBJECT
-   {
-     printf("In Object\n");
-     $$ = newAST(OBJ_TYPE, NULL, 0, NULL, yylineno);
-   }
+         {
+           printf("In Object\n");
+           $$ = newAST(OBJ_TYPE, NULL, 0, NULL, yylineno);
+         }
+       ;
+
+natType : NATTYPE
+          {
+            printf("In Object\n");
+            $$ = newAST(NAT_TYPE, NULL, 0, NULL, yylineno);
+          }
+        ;
 
 super : id
-      {
-        $$ = $1;
-      }
+        {
+          $$ = $1;
+        }
       | object
-      {
-        $$ = $1;
-      }
+        {
+          $$ = $1;
+        }
       ;
 
-varDeclList : varDeclList varDecl
-            |
-            ;
+varDeclList : varDeclList varDecl SEMICOLON
+              {
+                printf("In varDeclList \n");
+                appendToChildrenList ($1, $2);
+              }
+             |
+              {
+                printf("in varDeclList epsilon\n");
+                $$ = newAST(VAR_DECL_LIST, NULL, 0, NULL, yylineno);
+              }
+             ;
 
-varDecl : typeDecl ID SEMICOLON
+varDecl : typeDecl id
+          {
+            printf("In varDecl \n");
+            $$ = newAST(VAR_DECL, $1, 0, NULL, yylineno);
+            appendToChildrenList ($$, $2);
+          }
         ;
 
 methodDeclList : methodDeclList methodDecl
+                 {
+                     printf("In classDeclList \n");
+                     appendToChildrenList ($1, $2);
+                 }
                | methodDecl
+                 {
+                   printf("in classDeclList epsilon\n");
+                   $$ = newAST(METHOD_DECL_LIST, NULL, 0, NULL, yylineno);
+                 }
                ;
 
-methodDecl : typeDecl ID LPAREN typeDecl ID RPAREN body
+methodDecl : typeDecl id LPAREN typeDecl id RPAREN body
+             {
+               printf("In methodDecl \n");
+               $$ = newAST(CLASS_DECL, $1, 0, NULL, yylineno);
+               appendToChildrenList ($$, $2);
+               appendToChildrenList ($$, $4);
+               appendToChildrenList ($$, $5);
+             }
            ;
 
-typeDecl : NATTYPE
-         | OBJECT
-         | ID
+typeDecl : natType
+           {
+             $$ = $1;
+           }
+         | object
+           {
+             $$ = $1;
+           }
+         | id
+           {
+             $$ = $1;
+           }
          ;
 
 exprList : exprList expr SEMICOLON
