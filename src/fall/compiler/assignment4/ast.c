@@ -33,6 +33,11 @@ ASTree* newAST(ASTNodeType t, ASTree *child, unsigned int natAttribute,
   // create a linked list of children
   ASTList *childList = malloc(sizeof(ASTList));
   if(childList == NULL) printError("malloc in newAST()");
+  if (child == NULL) {
+    printf("Child in newAST is null.\n");
+  } else {
+    printf("Child in newAST is not null.\n");
+  }
   childList->data = child;
   childList->next = NULL;
   toReturn->children = childList;
@@ -66,8 +71,10 @@ void appendToChildrenList(ASTree *parent, ASTree *newChild) {
   if(newChild == NULL) printError("append called with null newChild");
 
   if(parent->childrenTail->data == NULL) { //replace empty tail with new child
+    printf("childrenTail data is NULL.");
     parent->childrenTail->data = newChild;
   } else { //tail of children is currently nonempty; append new child to list
+    printf("childrenTail data is Not NULL.");
     ASTList *newList = malloc(sizeof(ASTList));
     if(newList == NULL) printError("malloc in appendAST()");
     newList->data = newChild;
@@ -120,6 +127,7 @@ void printNodeTypeAndAttribute(ASTree *t) {
       case NAT_LITERAL_EXPR:        printf("NAT_LITERAL_EXPR(%u) ", t->natVal); break;
       default:                      printError("unknown node type in printNodeTypeAndAttribute()");
     }
+  printf(" (ends on line %u)", t->lineNumber);
 //  printf("End of print node type and attributes.");
 }
 

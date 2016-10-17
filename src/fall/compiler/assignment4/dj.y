@@ -69,22 +69,49 @@ classDeclList : classDeclList classDecl
                 }
               |
                 {
-                  printf("in classDeclList epsilon");
+                  printf("in classDeclList epsilon\n");
                   $$ = newAST(CLASS_DECL_LIST, NULL, 0,
                                            NULL, yylineno);
                 }
               ;
 
-classDecl : CLASS ID EXTENDS super LBRACE varDeclList RBRACE
+classDecl : CLASS id EXTENDS super LBRACE varDeclList RBRACE
             {
               printf("In classDecl \n");
-              $$ = newAST(CLASS_DECL, NULL, 0, NULL, yylineno);
-            }
-          | CLASS ID EXTENDS super LBRACE varDeclList methodDeclList RBRACE
-          ;
+              //$$ = newAST(CLASS_DECL, $1, 0, NULL, yylineno);
+              $$ = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
+              //ASTree *cd = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
 
-super : ID
-      | OBJECT
+              //appendToChildrenList ($1, newAST(AST_ID, NULL, 0, NULL, yylineno));
+              //appendToChildrenList ($$, $2);
+              //appendToChildrenList (cd, $1);
+              //appendToChildrenList (cd, newAST(OBJ_TYPE, NULL, 0, NULL, yylineno));
+              //appendToChildrenList (cd, $4);
+              appendToChildrenList ($$, $4);
+              //$$ = cd;
+            }
+          | CLASS id EXTENDS super LBRACE varDeclList methodDeclList RBRACE
+          ;
+id : ID
+   {
+     printf("In id.\n");
+     $$ = newAST(AST_ID, NULL, 0, yytext, yylineno);
+   }
+
+object : OBJECT
+   {
+     printf("In Object\n");
+     $$ = newAST(OBJ_TYPE, NULL, 0, NULL, yylineno);
+   }
+
+super : id
+      {
+        $$ = $1;
+      }
+      | object
+      {
+        $$ = $1;
+      }
       ;
 
 varDeclList : varDeclList varDecl
