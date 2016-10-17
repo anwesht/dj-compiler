@@ -45,13 +45,15 @@
 
 pgm : pgmList ENDOFFILE
       { printf("In pgm\n");
-        pgmAST = $1; return 0; }
+        //pgmAST = newAST(PROGRAM, NULL, 0, NULL, yylineno);
+        pgmAST = $1;
+        return 0; }
     ;
 
 pgmList : classDeclList main
           { printf("In pgmList \n");
-            $$ = newAST(CLASS_DECL_LIST, NULL, 0,
-                    NULL, yylineno);
+            $$ = newAST(PROGRAM, NULL, 0, NULL, yylineno);
+            appendToChildrenList ($$, $1);
           }
         ;
 
@@ -61,10 +63,23 @@ main : MAIN body
 body : LBRACE varDeclList exprList RBRACE
 
 classDeclList : classDeclList classDecl
+                {
+                  printf("In classDeclList \n");
+                  appendToChildrenList ($1, $2);
+                }
               |
+                {
+                  printf("in classDeclList epsilon");
+                  $$ = newAST(CLASS_DECL_LIST, NULL, 0,
+                                           NULL, yylineno);
+                }
               ;
 
 classDecl : CLASS ID EXTENDS super LBRACE varDeclList RBRACE
+            {
+              printf("In classDecl \n");
+              $$ = newAST(CLASS_DECL, NULL, 0, NULL, yylineno);
+            }
           | CLASS ID EXTENDS super LBRACE varDeclList methodDeclList RBRACE
           ;
 
