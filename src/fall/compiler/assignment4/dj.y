@@ -55,13 +55,9 @@ pgmList : classDeclList MAIN LBRACE varDeclList exprList RBRACE
           { printf("In pgmList \n");
             $$ = newAST(PROGRAM, $1, 0, NULL, yylineno);
             appendToChildrenList ($$, $4);
+            appendToChildrenList ($$, $5);
           }
         ;
-
-main : MAIN body
-     ;
-
-body : LBRACE varDeclList exprList RBRACE
 
 classDeclList : classDeclList classDecl
                 {
@@ -81,6 +77,7 @@ classDecl : CLASS id EXTENDS super LBRACE varDeclList RBRACE
               $$ = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
               appendToChildrenList ($$, $4);
               appendToChildrenList ($$, $6);
+              appendToChildrenList ($$, newAST(METHOD_DECL_LIST, NULL, 0, NULL, yylineno));
             }
           | CLASS id EXTENDS super LBRACE varDeclList methodDeclList RBRACE
             {
@@ -98,6 +95,13 @@ id : ID
        $$ = newAST(AST_ID, NULL, 0, yytext, yylineno);
      }
    ;
+
+dotId : expr DOT id
+        {
+          $$ = newAST(DOT_ID_EXPR, $1, 0, yytext, yylineno);
+          appendToChildrenList ($$, $3);
+        }
+      ;
 
 object : OBJECT
          {
@@ -170,6 +174,7 @@ methodDecl : typeDecl id LPAREN typeDecl id RPAREN LBRACE varDeclList exprList R
                appendToChildrenList ($$, $4);
                appendToChildrenList ($$, $5);
                appendToChildrenList ($$, $8);
+               appendToChildrenList ($$, $9);
              }
            ;
 
@@ -188,68 +193,141 @@ typeDecl : natType
          ;
 
 exprList : exprList expr SEMICOLON
+           {
+             //$$ = newAST(EXPR_LIST, $2, 0, NULL, yylineno);
+             appendToChildrenList ($1, $2);
+           }
          | expr SEMICOLON
+           {
+             $$ = newAST(EXPR_LIST, $1, 0, NULL, yylineno);
+             //appendToChildrenList ($$, $2);
+           }
          ;
 
-expr : arithmeticExpr
-     | cmpExpr
-     | NOT expr
-     | assignExpr
-     | constructorExpr
-     | ifElseExpr
-     | forExpr
-     | printNatExpr
-     | readNatExpr
-     | factor
-     | NUL
-     | THIS
-     | OBJECT
+expr : arithmeticExpr  { $$ = $1; }
+     | cmpExpr         { $$ = $1; }
+     | NOT expr        { $$ = $1; }
+     | assignExpr      { $$ = $1; }
+     | constructorExpr { $$ = $1; }
+     | ifElseExpr      { $$ = $1; }
+     | forExpr         { $$ = $1; }
+     | printNatExpr    { $$ = $1; }
+     | readNatExpr     { $$ = $1; }
+     | factor          { $$ = $1; }
+     | NUL             { $$ = $1; }
+     | THIS            { $$ = $1; }
+     | OBJECT          { $$ = $1; }
      ;
 
 arithmeticExpr : expr PLUS expr
+                 {
+                   $$ = newAST(PLUS_EXPR, $1, 0, NULL, yylineno);
+                   appendToChildrenList ($$, $3);
+                 }
                | expr MINUS expr
+                 {
+                   $$ = newAST(MINUS_EXPR, $1, 0, NULL, yylineno);
+                   appendToChildrenList ($$, $3);
+                 }
                | expr TIMES expr
+                 {
+                   $$ = newAST(TIMES_EXPR, $1, 0, NULL, yylineno);
+                   appendToChildrenList ($$, $3);
+                 }
                ;
 
 cmpExpr : expr EQUALITY expr
+          {
+            $$ = newAST(EQUALITY_EXPR, $1, 0, NULL, yylineno);
+            appendToChildrenList ($$, $3);
+          }
         | expr GREATER expr
+          {
+            $$ = newAST(GREATER_THAN_EXPR, $1, 0, NULL, yylineno);
+            appendToChildrenList ($$, $3);
+          }
         | expr OR expr
+          {
+            $$ = newAST(OR_EXPR, $1, 0, NULL, yylineno);
+            appendToChildrenList ($$, $3);
+          }
         ;
 
 assignExpr : lhsExpr ASSIGN expr
+             {
+               $$ = newAST(ASSIGN_EXPR, $1, 0, NULL, yylineno);
+               appendToChildrenList ($$, $3);
+             }
            ;
 
-lhsExpr : id
-        | expr DOT id
+lhsExpr : id { $$ = $1; }
+        | dotId { $$ = $1; }
         ;
 
 constructorExpr : NEW id LPAREN RPAREN
-                | NEW OBJECT LPAREN RPAREN
+                  {
+                    $$ = newAST(NEW_EXPR, $2, 0, NULL, yylineno);
+                  }
+                | NEW object LPAREN RPAREN
+                  {
+                    $$ = newAST(NEW_EXPR, $2, 0, NULL, yylineno);
+                  }
                 ;
 
 ifElseExpr : IF LPAREN expr RPAREN LBRACE exprList RBRACE ELSE LBRACE exprList RBRACE
+             {
+               $$ = newAST(IF_THEN_ELSE_EXPR, $3, 0, NULL, yylineno);
+               appendToChildrenList ($$, $6);
+               appendToChildrenList ($$, $10);
+             }
            ;
 
 forExpr : FOR LPAREN expr SEMICOLON expr SEMICOLON expr RPAREN LBRACE exprList RBRACE
+          {
+            $$ = newAST(FOR_EXPR, $3, 0, NULL, yylineno);
+            appendToChildrenList ($$, $5);
+            appendToChildrenList ($$, $7);
+            appendToChildrenList ($$, $10);
+          }
         ;
 
 printNatExpr : PRINTNAT LPAREN expr RPAREN
+               {
+                 $$ = newAST(PRINT_EXPR, $3, 0, NULL, yylineno);
+               }
              ;
 
 readNatExpr : READNAT LPAREN RPAREN
+              {
+                $$ = newAST(READ_EXPR, NULL, 0, NULL, yylineno);
+              }
             ;
 
 factor : NATLITERAL
-       | lhsExpr
-       | dotMethodCallExpr
-       | LPAREN expr RPAREN
+         {
+           $$ = newAST(NAT_LITERAL_EXPR, NULL, atoi(yytext), NULL, yylineno);
+         }
+       | lhsExpr { $$ = $1; }
+       | dotMethodCallExpr { $$ = $1; }
+       | LPAREN expr RPAREN { $$ = $2; }
        ;
 
 dotMethodCallExpr : expr DOT methodCallExpr
+                    {
+                      $$ = newAST(DOT_METHOD_CALL_EXPR, $1, 0, NULL, yylineno);
+                      appendToChildrenList ($$, $3);
+                    }
                   | methodCallExpr
+                    {
+                      $$ = $1;
+                    }
                   ;
 
 methodCallExpr : id LPAREN expr RPAREN
+                 {
+                    $$ = newAST(METHOD_CALL_EXPR, $1, 0, NULL, yylineno);
+                    appendToChildrenList ($$, $3);
+                 }
                ;
 
 %%
