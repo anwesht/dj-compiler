@@ -51,10 +51,10 @@ pgm : pgmList ENDOFFILE
       }
     ;
 
-pgmList : classDeclList main
+pgmList : classDeclList MAIN LBRACE varDeclList exprList RBRACE
           { printf("In pgmList \n");
-            $$ = newAST(PROGRAM, NULL, 0, NULL, yylineno);
-            appendToChildrenList ($$, $1);
+            $$ = newAST(PROGRAM, $1, 0, NULL, yylineno);
+            appendToChildrenList ($$, $4);
           }
         ;
 
@@ -65,27 +65,26 @@ body : LBRACE varDeclList exprList RBRACE
 
 classDeclList : classDeclList classDecl
                 {
-                  printf("In classDeclList \n");
-                  appendToChildrenList ($1, $2);
+                  printf("In classDeclList %u \n", yylineno);
+                  appendToChildrenList ($$, $2);
                 }
               |
                 {
-                  printf("in classDeclList epsilon\n");
-                  $$ = newAST(CLASS_DECL_LIST, NULL, 0,
-                                           NULL, yylineno);
+                  printf("in classDeclList epsilon %u \n", yylineno);
+                  $$ = newAST(CLASS_DECL_LIST, NULL, 0, NULL, yylineno);
                 }
               ;
 
 classDecl : CLASS id EXTENDS super LBRACE varDeclList RBRACE
             {
-              printf("In classDecl \n");
+              printf("In classDecl %u\n", yylineno);
               $$ = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
               appendToChildrenList ($$, $4);
               appendToChildrenList ($$, $6);
             }
           | CLASS id EXTENDS super LBRACE varDeclList methodDeclList RBRACE
             {
-              printf("In classDecl with method.\n");
+              printf("In classDecl with method. %u\n", yylineno);
               $$ = newAST(CLASS_DECL, $2, 0, NULL, yylineno);
               appendToChildrenList ($$, $4);
               appendToChildrenList ($$, $6);
@@ -95,21 +94,21 @@ classDecl : CLASS id EXTENDS super LBRACE varDeclList RBRACE
 
 id : ID
      {
-       printf("In id: %s \n", yytext);
+       printf("In id: %s : %u\n", yytext, yylineno);
        $$ = newAST(AST_ID, NULL, 0, yytext, yylineno);
      }
    ;
 
 object : OBJECT
          {
-           printf("In Object\n");
+           printf("In Object %u\n", yylineno);
            $$ = newAST(OBJ_TYPE, NULL, 0, NULL, yylineno);
          }
        ;
 
 natType : NATTYPE
           {
-            printf("In Object\n");
+            printf("In NatType %u\n", yylineno);
             $$ = newAST(NAT_TYPE, NULL, 0, NULL, yylineno);
           }
         ;
@@ -124,7 +123,7 @@ super : id
         }
       ;
 
-varDeclList : varDeclList varDecl SEMICOLON
+varDeclList : varDeclList varDecl
               {
                 printf("In varDeclList \n");
                 appendToChildrenList ($1, $2);
@@ -136,39 +135,41 @@ varDeclList : varDeclList varDecl SEMICOLON
               }
              ;
 
-varDecl : typeDecl id
+varDecl : typeDecl id SEMICOLON
           {
             printf("In varDecl \n");
-            $$ = newAST(VAR_DECL, $1, 0, NULL, yylineno);
+            //$$ = newAST(VAR_DECL, $1, 0, NULL, yylineno);
+            $$ = newAST(VAR_DECL, NULL, 0, NULL, yylineno);
+            appendToChildrenList ($$, $1);
             appendToChildrenList ($$, $2);
           }
         ;
 
 methodDeclList : methodDeclList methodDecl
                  {
-                   printf("In methodDeclList \n");
-                   if( $$ == NULL ) {
+                   printf("In methodDeclList %u\n", yylineno);
+                   /*if( $$ == NULL ) {
+                     printf("$$$$$$$$\nMETHOD DECL LIST EMPTY!!!\n$$$$$$$\n");
                      $$ = newAST(METHOD_DECL_LIST, NULL, 0, NULL, yylineno);
-                   }
-                   appendToChildrenList ($$, $2);
+                   }*/
+                   appendToChildrenList ($1, $2);
                  }
                | methodDecl
                  {
                    printf("in methodDeclList epsilon\n");
-                   //if( $$ == NULL ) {
-                     $$ = newAST(METHOD_DECL_LIST, NULL, 0, NULL, yylineno);
-                   //}
+                   $$ = newAST(METHOD_DECL_LIST, NULL, 0, NULL, yylineno);
                    appendToChildrenList ($$, $1);
                  }
                ;
 
-methodDecl : typeDecl id LPAREN typeDecl id RPAREN body
+methodDecl : typeDecl id LPAREN typeDecl id RPAREN LBRACE varDeclList exprList RBRACE
              {
-               printf("In methodDecl \n");
+               printf("In methodDecl %u\n", yylineno);
                $$ = newAST(METHOD_DECL, $1, 0, NULL, yylineno);
                appendToChildrenList ($$, $2);
                appendToChildrenList ($$, $4);
                appendToChildrenList ($$, $5);
+               appendToChildrenList ($$, $8);
              }
            ;
 
@@ -218,11 +219,11 @@ cmpExpr : expr EQUALITY expr
 assignExpr : lhsExpr ASSIGN expr
            ;
 
-lhsExpr : ID
-        | expr DOT ID
+lhsExpr : id
+        | expr DOT id
         ;
 
-constructorExpr : NEW ID LPAREN RPAREN
+constructorExpr : NEW id LPAREN RPAREN
                 | NEW OBJECT LPAREN RPAREN
                 ;
 
@@ -248,7 +249,7 @@ dotMethodCallExpr : expr DOT methodCallExpr
                   | methodCallExpr
                   ;
 
-methodCallExpr : ID LPAREN expr RPAREN
+methodCallExpr : id LPAREN expr RPAREN
                ;
 
 %%
