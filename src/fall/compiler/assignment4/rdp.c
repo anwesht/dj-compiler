@@ -54,6 +54,7 @@ static void consume(Token t)
 ASTree* pgmList(){
   ASTree *pgm = newAST(PROGRAM, NULL, 0, NULL, lineNo);
   ASTree *classDeclList = parseClassDeclList();
+  appendToChildrenList(pgm, classDeclList);
   return pgm;
 }
 
@@ -66,36 +67,29 @@ ASTree* parseClassDeclList(){
 }
 
 ASTree* parseClassDecl(){
-  printCurrentToken();
   consume(CLASS);
-  printCurrentToken();
   ASTree *classDecl = newAST(CLASS_DECL, NULL, 0, NULL, lineNo);
-  printCurrentToken();
   appendToChildrenList(classDecl, parseId());
-  printCurrentToken();
   consume(EXTENDS);
-  printCurrentToken();
   appendToChildrenList(classDecl, parseSuper());
-  printCurrentToken();
   consume(LBRACE);
-  printCurrentToken();
   appendToChildrenList(classDecl, parseVarDeclList());
-  printCurrentToken();
   consume(RBRACE);
-  printCurrentToken();
   return classDecl;
 }
 
 ASTree* parseId(){
 //  return newAST(AST_ID, NULL, 0, tokenString, lineNo);
+  ASTree *astId = newAST(AST_ID, NULL, 0, tokenString, lineNo);
   consume(ID);
-  return newAST(AST_ID, NULL, 0, tokenString, lineNo);
+  return astId;
 }
 
 ASTree* parseObject(){
 //  return newAST(AST_ID, NULL, 0, tokenString, lineNo);
+  ASTree *astObj = newAST(OBJ_TYPE, NULL, 0, NULL, lineNo);
   consume(OBJECT);
-  return newAST(OBJ_TYPE, NULL, 0, NULL, lineNo);
+  return astObj;
 }
 
 ASTree* parseSuper(){
@@ -109,8 +103,6 @@ ASTree* parseSuper(){
       syntaxError("unexpected token -> ");
       exit(-1);
   }
-//  consume(ID);
-//  return newAST(AST_ID, NULL, 0, "testSuper", lineNo);
 }
 
 ASTree* parseVarDeclList(){
@@ -317,7 +309,9 @@ int main( int argc, char **argv )
   }
 
  /* parse the input program */
+  printf("Lexer Output....\n");
   ASTree *pgmAST = parse();
+  printf("\n\nAST Output....\n\n");
   printAST(pgmAST);
   return 0;
 
