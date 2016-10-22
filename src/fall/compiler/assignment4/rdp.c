@@ -3,8 +3,8 @@
 #include <ctype.h>      //isdigit(), isalpha()
 #include <unistd.h>     //NULL
 #include <string.h>     //strcmp()
-#include "lexer.c"
-#include "ast.c"
+#include "lexer.h"
+#include "ast.h"
 
 static Token token; /* holds current token */
 

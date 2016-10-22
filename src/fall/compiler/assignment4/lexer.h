@@ -40,7 +40,7 @@ typedef enum
 extern char tokenString[MAXTOKENLEN+1];
 
 extern int pos, lineNo;            // position and line number tracker
-
+extern FILE *fp;                           // file to be tokenized.
 
 /* function getToken returns the
  * next token in source file
