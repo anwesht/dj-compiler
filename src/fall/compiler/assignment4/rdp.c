@@ -24,6 +24,9 @@ ASTree* parseVarDeclList(void);
 ASTree* parseVarDecl(void);
 ASTree* parseTypeDecl(void);
 
+ASTree* parseFieldDecl(ASTree *astTypeDecl, ASTree *astId);
+ASTree *parseMethodDecl(ASTree *astTypeDecl, ASTree *astId);
+
 ASTree* parseExprList(void);
 ASTree* parseExpr(void);
 ASTree* parseSimpleExpr(void);
@@ -149,6 +152,33 @@ ASTree* parseClassDeclList(){
   return astClassDeclList;
 }
 
+ASTree* parseFieldDecl(ASTree *astTypeDecl, ASTree *astId) {
+  ASTree *astVarDecl = newAST(VAR_DECL, NULL, 0, NULL, getLineNo());
+  appendToChildrenList(astVarDecl, astTypeDecl);    //Type of var
+  appendToChildrenList(astVarDecl, astId);          //varName
+  updateLineNo(astVarDecl);                         //End of VarDecl
+  consume(SEMICOLON);
+  return astVarDecl;
+//  appendToChildrenList(astVarDeclList, astVarDecl);
+}
+
+ASTree *parseMethodDecl(ASTree *astTypeDecl, ASTree *astId) {
+  ASTree *astMethodDecl = newAST(METHOD_DECL, NULL, 0, NULL, getLineNo());
+  appendToChildrenList(astMethodDecl, astTypeDecl);         //Return type of method
+  appendToChildrenList(astMethodDecl, astId);               //Method Name
+  consume(LPAREN);
+  appendToChildrenList(astMethodDecl, parseTypeDecl());     //Argument Type
+  appendToChildrenList(astMethodDecl, parseId());           //Argument Name
+  consume(RPAREN);
+  consume(LBRACE);
+  appendToChildrenList(astMethodDecl, parseVarDeclList());  //Method Locals
+  appendToChildrenList(astMethodDecl, parseExprList());     //Method Expressions
+  updateLineNo(astMethodDecl);                              //End of MethodDecl
+  consume(RBRACE);
+//  appendToChildrenList(astMethodDeclList, astMethodDecl);
+  return astMethodDecl;
+}
+
 ASTree* parseClassDecl(){
   consume(CLASS);
   ASTree *astClassDecl = newAST(CLASS_DECL, NULL, 0, NULL, getLineNo());
@@ -161,34 +191,31 @@ ASTree* parseClassDecl(){
 
 
   /** VarDecl OR MethodDecl -> Depending on the lookahead token. */
+  ASTree *astTypeDecl = NULL;
+  ASTree *astId = NULL;
   while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
-    ASTree *astTypeDecl = parseTypeDecl();
-    ASTree *astId = parseId();
+    /*ASTree *astTypeDecl = parseTypeDecl();
+    ASTree *astId = parseId();*/
+    astTypeDecl = parseTypeDecl();
+    astId = parseId();
 
     /** VarDecl */
     if(peek() == SEMICOLON) {
-      ASTree *astVarDecl = newAST(VAR_DECL, NULL, 0, NULL, getLineNo());
-      appendToChildrenList(astVarDecl, astTypeDecl);    //Type of var
-      appendToChildrenList(astVarDecl, astId);          //varName
-      updateLineNo(astVarDecl);                         //End of VarDecl
-      consume(SEMICOLON);
-      appendToChildrenList(astVarDeclList, astVarDecl);
+      appendToChildrenList(astVarDeclList, parseFieldDecl(astTypeDecl, astId));
+    } else if (peek() == LPAREN){
+      appendToChildrenList(astMethodDeclList, parseMethodDecl(astTypeDecl, astId));
+      break;
+    } else {
+      syntaxError("unexpected token -> ");
+      exit(-1);
     }
+  }
+  while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
+    astTypeDecl = parseTypeDecl();
+    astId = parseId();
     /** Method Decl */
-    else if(peek() == LPAREN){
-      ASTree *astMethodDecl = newAST(METHOD_DECL, NULL, 0, NULL, getLineNo());
-      appendToChildrenList(astMethodDecl, astTypeDecl);         //Return type of method
-      appendToChildrenList(astMethodDecl, astId);               //Method Name
-      consume(LPAREN);
-      appendToChildrenList(astMethodDecl, parseTypeDecl());     //Argument Type
-      appendToChildrenList(astMethodDecl, parseId());           //Argument Name
-      consume(RPAREN);
-      consume(LBRACE);
-      appendToChildrenList(astMethodDecl, parseVarDeclList());  //Method Locals
-      appendToChildrenList(astMethodDecl, parseExprList());     //Method Expressions
-      updateLineNo(astMethodDecl);                              //End of MethodDecl
-      consume(RBRACE);
-      appendToChildrenList(astMethodDeclList, astMethodDecl);
+    if(peek() == LPAREN){
+      appendToChildrenList(astMethodDeclList, parseMethodDecl(astTypeDecl, astId));
     } else {
       syntaxError("unexpected token -> ");
       exit(-1);
