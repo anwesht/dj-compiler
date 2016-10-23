@@ -29,7 +29,7 @@ size_t len = 256;                   // size for buffer. Gets resized automatical
 char tokenString[MAXTOKENLEN + 1];  // current token buffer.
 FILE *fp;                           // file to be tokenized.
 int isEOF = FALSE;
-int DEBUG = TRUE;
+int DEBUG = FALSE;
 
 /** State definitions for the scanner DFA */
 /*typedef enum
