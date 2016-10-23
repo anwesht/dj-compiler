@@ -1,3 +1,7 @@
+/** Created by atuladhar on 10/20/16.
+  * Pledge: I pledge my Honor that I have not cheated, and will not cheat, on this assignment
+  * Name: Anwesh Tuladhar
+  */
 #ifndef _LEXER_H_
 #define _LEXER_H_
 
