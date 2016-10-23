@@ -96,7 +96,7 @@ id : ID
      }
    ;
 
-dotId : expr DOT id
+dotIdExpr : expr DOT id
         {
           $$ = newAST(DOT_ID_EXPR, $1, 0, yytext, yylineno);
           appendToChildrenList ($$, $3);
@@ -270,7 +270,7 @@ assignExpr : lhsExpr ASSIGN expr
            ;
 
 lhsExpr : id { $$ = $1; }
-        | dotId { $$ = $1; }
+        | dotIdExpr { $$ = $1; }
         ;
 
 constructorExpr : NEW id LPAREN RPAREN
@@ -345,11 +345,6 @@ idExpr : id
          }
        ;
 
-dotIdExpr : dotId
-            {
-              $$ = newAST(DOT_ID_EXPR, $1, 0, NULL, yylineno);
-            }
-          ;
 %%
 
 int main(int argc, char **argv) {
