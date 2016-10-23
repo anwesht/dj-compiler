@@ -334,7 +334,8 @@ ASTree* parseExpr() {
       printf("child is unknown expr: %u", e->typ);
     }
     ASTree *orExpr = newAST(OR_EXPR, e, 0, NULL, getLineNo());
-    appendToChildrenList(orExpr, parseExpr());
+//    appendToChildrenList(orExpr, parseExpr());
+    appendToChildrenList(orExpr, parseSimpleExpr());
     e = orExpr;
   }
 
@@ -377,16 +378,12 @@ ASTree* parseSimpleExpr() {
     printf("INSIDE PLUS LOOP");
       ASTree *astPlusExpr = newAST(PLUS_EXPR, se, 0, NULL, getLineNo());
       consume(PLUS);
-//      appendToChildrenList(astPlusExpr, parseExpr());
-//      appendToChildrenList(astPlusExpr, parseSimpleExpr());
       appendToChildrenList(astPlusExpr, parseTerm());
       se = astPlusExpr;
     } else if( peek() == MINUS){
         printf("INSIDE MINUS LOOP");
       ASTree *astMinusExpr = newAST(MINUS_EXPR, se, 0, NULL, getLineNo());
       consume(MINUS);
-//      appendToChildrenList(astMinusExpr, parseExpr());
-//      appendToChildrenList(astMinusExpr, parseSimpleExpr());
       appendToChildrenList(astMinusExpr, parseTerm());
       se = astMinusExpr;
     }
