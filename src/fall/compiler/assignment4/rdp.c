@@ -291,7 +291,7 @@ ASTree* parseExpr() {
       appendToChildrenList(e, parseExprList());
       consume(RBRACE);
       return e;
-
+/*
      case PRINTNAT:
       e = newAST(PRINT_EXPR, NULL, 0, NULL, getLineNo());
       consume(PRINTNAT);
@@ -312,7 +312,7 @@ ASTree* parseExpr() {
        consume(LPAREN);
        consume(RPAREN);
        e = astNewExpr;
-       break;
+       break;*/
 
      default:
       e = parseSimpleExpr();
@@ -430,29 +430,51 @@ ASTree* parseFactor() {
       appendToChildrenList(e, parseExpr());
       break;
 
+    case PRINTNAT:
+     consume(PRINTNAT);
+     e = newAST(PRINT_EXPR, NULL, 0, NULL, getLineNo());
+     appendToChildrenList(e, parseExpr());
+    break;
+
+    case READNAT:
+     e = newAST(READ_EXPR, NULL, 0, NULL, getLineNo());
+     consume(READNAT);
+     consume(LPAREN);
+     consume(RPAREN);
+    break;
+
+    case NEW:
+      consume(NEW);
+      ASTree *astNewExpr = newAST(NEW_EXPR, NULL, 0, NULL, getLineNo());
+      appendToChildrenList(astNewExpr, parseId());
+      consume(LPAREN);
+      consume(RPAREN);
+      e = astNewExpr;
+      break;
+
     default:
         syntaxError("unexpected token -> ");
       exit(-1);
   }
 
-    // check DOT
-    while(peek() == DOT ) {
-      consume(DOT);
-      if(peek() == ID && lookahead() == LPAREN){
-        // This is dot method call expr
-        ASTree *astDotMethodCallExpr = newAST(DOT_METHOD_CALL_EXPR, e, 0, NULL, getLineNo());
-        appendToChildrenList(astDotMethodCallExpr, parseId());
-        consume(LPAREN);
-        appendToChildrenList(astDotMethodCallExpr, parseExpr());
-        consume(RPAREN);
-        e = astDotMethodCallExpr;
-      } else if(peek() == ID) {
-        // This is dot id Expr
-        ASTree *astDotIdExpr = newAST(DOT_ID_EXPR, e, 0, NULL, getLineNo());
-        appendToChildrenList(astDotIdExpr, parseId());
-        e = astDotIdExpr;
-      }
+  // check DOT
+  while(peek() == DOT ) {
+    consume(DOT);
+    if(peek() == ID && lookahead() == LPAREN){
+      // This is dot method call expr
+      ASTree *astDotMethodCallExpr = newAST(DOT_METHOD_CALL_EXPR, e, 0, NULL, getLineNo());
+      appendToChildrenList(astDotMethodCallExpr, parseId());
+      consume(LPAREN);
+      appendToChildrenList(astDotMethodCallExpr, parseExpr());
+      consume(RPAREN);
+      e = astDotMethodCallExpr;
+    } else if(peek() == ID) {
+      // This is dot id Expr
+      ASTree *astDotIdExpr = newAST(DOT_ID_EXPR, e, 0, NULL, getLineNo());
+      appendToChildrenList(astDotIdExpr, parseId());
+      e = astDotIdExpr;
     }
+  }
   return e;
 }
 
