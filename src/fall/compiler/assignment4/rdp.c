@@ -27,6 +27,7 @@ ASTree* parseExprList(void);
 ASTree* parseExpr();
 
 ASTree* parseSimpleExpr();
+ASTree* parseSimpleArithmeticExpr();
 ASTree* parseTerm();
 ASTree* parseFactor();
 ASTree* parseIdExpr();
@@ -271,10 +272,12 @@ ASTree* parseExpr() {
       appendToChildrenList(e, parseExpr());
       consume(RPAREN);
       consume(LBRACE);
+      printf("\nIF EXPRESSION LIST:\n");
       appendToChildrenList(e, parseExprList());
       consume(RBRACE);
       consume(ELSE);
       consume(LBRACE);
+      printf("\nELSE EXPRESSION LIST\n");
       appendToChildrenList(e, parseExprList());
       consume(RBRACE);
 //      consume(SEMICOLON);
@@ -282,6 +285,7 @@ ASTree* parseExpr() {
 
     case FOR:
       e = newAST(FOR_EXPR, NULL, 0, NULL, getLineNo());
+      consume(FOR);
       consume(LPAREN);
       appendToChildrenList(e, parseExpr());
       consume(SEMICOLON);
@@ -311,15 +315,17 @@ ASTree* parseExpr() {
       printf("SIMPLE EXPR RECEIVED IS: %u", e->typ);
   }
 
-  if(peek() == EQUALITY) {
+/*  if(peek() == EQUALITY) {
     consume(EQUALITY);
-    e = newAST(EQUALITY_EXPR, e, 0, NULL, getLineNo());
-    appendToChildrenList(e, parseExpr());
+    ASTree *astEqualityExpr = newAST(EQUALITY_EXPR, e, 0, NULL, getLineNo());
+    appendToChildrenList(astEqualityExpr, parseSimpleExpr());
+    e = astEqualityExpr;
   } else if(peek() == GREATER) {
     consume(GREATER);
-    e = newAST(GREATER_THAN_EXPR, e, 0, NULL, getLineNo());
-    appendToChildrenList(e, parseExpr());
-  }
+    ASTree *astGreaterThanExpr = newAST(GREATER_THAN_EXPR, e, 0, NULL, getLineNo());
+    appendToChildrenList(astGreaterThanExpr, parseSimpleExpr());
+    e = astGreaterThanExpr;
+  }*/
 
   while(peek() == OR){
     consume(OR);
@@ -367,8 +373,23 @@ ASTree* parseExpr() {
 //  }
   return e;
 }
-
 ASTree* parseSimpleExpr() {
+  ASTree* se = parseSimpleArithmeticExpr();
+  if(peek() == EQUALITY) {
+      consume(EQUALITY);
+      ASTree *astEqualityExpr = newAST(EQUALITY_EXPR, se, 0, NULL, getLineNo());
+      appendToChildrenList(astEqualityExpr, parseSimpleArithmeticExpr());
+      se = astEqualityExpr;
+  } else if(peek() == GREATER) {
+      consume(GREATER);
+      ASTree *astGreaterThanExpr = newAST(GREATER_THAN_EXPR, se, 0, NULL, getLineNo());
+      appendToChildrenList(astGreaterThanExpr, parseSimpleArithmeticExpr());
+      se = astGreaterThanExpr;
+  }
+  return se;
+}
+
+ASTree* parseSimpleArithmeticExpr() {
   ASTree *se = parseTerm();
   printf("after parse term:");
   printCurrentToken();
@@ -397,21 +418,25 @@ ASTree* parseTerm() {
   ASTree *t = parseFactor();
 
   // check DOT
-  while(peek() == DOT ) {
+  /*while(peek() == DOT ) {
     consume(DOT);
     if(peek() == ID && lookahead() == LPAREN){
       // This is dot method call expr
-      t = newAST(DOT_METHOD_CALL_EXPR, t, 0, NULL, getLineNo());
-      appendToChildrenList(t, parseId());
+      ASTree *astDotMethodCallExpr = newAST(DOT_METHOD_CALL_EXPR, t, 0, NULL, getLineNo());
+      appendToChildrenList(astDotMethodCallExpr, parseId());
       consume(LPAREN);
-      appendToChildrenList(t, parseExpr());
+      appendToChildrenList(astDotMethodCallExpr, parseExpr());
       consume(RPAREN);
+      t = astDotMethodCallExpr;
     } else if(peek() == ID) {
       // This is dot id Expr
-      t = newAST(DOT_ID_EXPR, t, 0, NULL, getLineNo());
-      appendToChildrenList(t, parseId());
+      ASTree *astDotIdExpr = newAST(DOT_ID_EXPR, t, 0, NULL, getLineNo());
+      appendToChildrenList(astDotIdExpr, parseId());
+      t = astDotIdExpr;
     }
-  }
+    printf("\nCurrent token at end of DOT Loop\n");
+    printCurrentToken();
+  }*/
 
   while (peek() == TIMES) {
     ASTree *astTimesExpr = newAST(TIMES_EXPR, t, 0, NULL, getLineNo());
@@ -462,6 +487,27 @@ ASTree* parseFactor() {
         syntaxError("unexpected token -> ");
       exit(-1);
   }
+
+    // check DOT
+    while(peek() == DOT ) {
+      consume(DOT);
+      if(peek() == ID && lookahead() == LPAREN){
+        // This is dot method call expr
+        ASTree *astDotMethodCallExpr = newAST(DOT_METHOD_CALL_EXPR, e, 0, NULL, getLineNo());
+        appendToChildrenList(astDotMethodCallExpr, parseId());
+        consume(LPAREN);
+        appendToChildrenList(astDotMethodCallExpr, parseExpr());
+        consume(RPAREN);
+        e = astDotMethodCallExpr;
+      } else if(peek() == ID) {
+        // This is dot id Expr
+        ASTree *astDotIdExpr = newAST(DOT_ID_EXPR, e, 0, NULL, getLineNo());
+        appendToChildrenList(astDotIdExpr, parseId());
+        e = astDotIdExpr;
+      }
+      printf("\nCurrent token at end of DOT Loop\n");
+      printCurrentToken();
+    }
   return e;
 }
 
@@ -474,6 +520,7 @@ ASTree* parseDotIdExpr(ASTree *e) {
 
 ASTree* parseNatLiteralExpr() {
   ASTree *astNatLiteralExpr = newAST(NAT_LITERAL_EXPR, NULL, getNatAttribute(), getIdAttribute(), getLineNo());
+  consume(NATLITERAL);
   return astNatLiteralExpr;
 }
 
