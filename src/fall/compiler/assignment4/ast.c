@@ -59,17 +59,16 @@ ASTree* newAST(ASTNodeType t, ASTree *child, unsigned int natAttribute,
 
 /* Append a new child AST node onto a parent's list of children */
 void appendToChildrenList(ASTree *parent, ASTree *newChild) {
-//  printf("In append.");
   if(parent == NULL) printError("append called with null parent");
   if(parent->children == NULL || parent->childrenTail == NULL) {
     printError("append called with bad parent");
   }
   if(newChild == NULL) printError("append called with null newChild");
 
-  if(parent->childrenTail->data == NULL) { //replace empty tail with new child
-    //printf("childrenTail data is NULL.");
+  /** Replace empty tail with new child */
+  if(parent->childrenTail->data == NULL) {
     parent->childrenTail->data = newChild;
-  } else { //tail of children is currently nonempty; append new child to list
+  } else { /** Append new child to tail of the list */
     ASTList *newList = malloc(sizeof(ASTList));
     if(newList == NULL) printError("malloc in appendAST()");
     newList->data = newChild;
@@ -125,7 +124,7 @@ void printNodeTypeAndAttribute(ASTree *t) {
   printf(" (ends on line %u)", t->lineNumber);
 }
 
-/* print tree in preorder */
+/** Print indented AST */
 void printASTree(ASTree *t, int depth) {
   if(t == NULL) return;
   printf("%d:",depth);
