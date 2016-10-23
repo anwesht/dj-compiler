@@ -75,6 +75,13 @@ int getLineNo() {
   return token.lineNo;
 }
 
+void updateLineNo(ASTree *t) {
+  if(t != NULL){
+    printf("Changing line No. ");
+    t->lineNumber = getLineNo();
+  }
+}
+
 Token lookahead() {
   return nextToken.tok;
 }
@@ -101,10 +108,33 @@ static void consume(Token t)
 }
 
 ASTree* pgmList(){
-  ASTree *pgm = newAST(PROGRAM, NULL, 0, NULL, getLineNo());
-  ASTree *classDeclList = parseClassDeclList();
-  appendToChildrenList(pgm, classDeclList);
-  return pgm;
+  ASTree *astPGM = newAST(PROGRAM, NULL, 0, NULL, getLineNo());
+  printf("after pgm\n");
+  ASTree *astClassDeclList = parseClassDeclList();
+    printf("after class DEcl List\n");
+
+  appendToChildrenList(astPGM, astClassDeclList);
+    printf("after appending class decl list\n");
+
+  consume(MAIN);
+    printf("consume main\n");
+
+  consume(LBRACE);
+      printf("consume lbrace\n");
+
+  appendToChildrenList(astPGM, parseVarDeclList());
+      printf("append var decl list\n");
+
+  appendToChildrenList(astPGM, parseExprList());
+      printf("append expr list\n");
+
+//  astPGM->lineNumber = getLineNo();
+  updateLineNo(astPGM);
+      printf("update line no.\n");
+
+  consume(RBRACE);
+  printf("consume rbrace\n");
+  return astPGM;
 }
 
 ASTree* parseClassDeclList(){
@@ -112,6 +142,8 @@ ASTree* parseClassDeclList(){
   while(peek() == CLASS) {
     appendToChildrenList(astClassDeclList, parseClassDecl());
   }
+//  astClassDeclList->lineNumber = getLineNo();
+  updateLineNo(astClassDeclList);
   return astClassDeclList;
 }
 
@@ -122,29 +154,31 @@ ASTree* parseClassDecl(){
   consume(EXTENDS);
   appendToChildrenList(astClassDecl, parseSuper());
   consume(LBRACE);
-  printf("After LBRACE.");
-  printCurrentToken();
+//  printf("After LBRACE.");
+//  printCurrentToken();
   ASTree *astVarDeclList = newAST(VAR_DECL_LIST, NULL, 0, NULL, getLineNo());
   ASTree *astMethodDeclList = newAST(METHOD_DECL_LIST, NULL, 0, NULL, getLineNo());
 
 
   //VarDecl OR MethodDecl
-  printf("peek is");
-  printCurrentToken();
+//  printf("peek is");
+//  printCurrentToken();
   while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
 //    appendToChildrenList(astVarDeclList, parseVarDecl());
 //    ASTree *astVarDecl = newAST(VAR_DECL, NULL, getNatAttribute(), getIdAttribute(), getLineNo());
     ASTree *astTypeDecl = parseTypeDecl();
     ASTree *astId = parseId();
 
-    printf("here");
-    printCurrentToken();
+//    printf("here");
+//    printCurrentToken();
     if(peek() == SEMICOLON) {
-      printf("IN var decl");
+//      printf("IN var decl");
       ASTree *astVarDecl = newAST(VAR_DECL, NULL, 0, NULL, getLineNo());
       appendToChildrenList(astVarDecl, astTypeDecl);
       appendToChildrenList(astVarDecl, astId);
       consume(SEMICOLON);
+//      astVarDecl->lineNumber = getLineNo();
+      updateLineNo(astVarDecl);
       appendToChildrenList(astVarDeclList, astVarDecl);
     } else if(peek() == LPAREN){
       ASTree *astMethodDecl = newAST(METHOD_DECL, NULL, 0, NULL, getLineNo());
@@ -158,9 +192,11 @@ ASTree* parseClassDecl(){
       appendToChildrenList(astMethodDecl, parseVarDeclList());
       //append expr list.
       appendToChildrenList(astMethodDecl, parseExprList());
-      printf("After children expr list");
-      printCurrentToken();
+//      printf("After children expr list");
+//      printCurrentToken();
       consume(RBRACE);
+//      astMethodDecl->lineNumber = getLineNo();
+      updateLineNo(astMethodDecl);
       appendToChildrenList(astMethodDeclList, astMethodDecl);
     } else {
         syntaxError("unexpected token -> ");
@@ -170,7 +206,11 @@ ASTree* parseClassDecl(){
 
   appendToChildrenList(astClassDecl, astVarDeclList);
   appendToChildrenList(astClassDecl, astMethodDeclList);
+//  astMethodDeclList->lineNumber = getLineNo();
+  updateLineNo(astMethodDeclList);
   consume(RBRACE);
+//  astClassDecl->lineNumber = getLineNo();
+  updateLineNo(astClassDecl);
   return astClassDecl;
 }
 
@@ -234,6 +274,8 @@ ASTree* parseVarDeclList(){
   while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
     appendToChildrenList(astVarDeclList, parseVarDecl());
   }
+//  astVarDeclList->lineNumber = getLineNo();
+  updateLineNo(astVarDeclList);
   return astVarDeclList;
 }
 
@@ -247,22 +289,28 @@ ASTree* parseVarDecl() {
 
 ASTree* parseExprList() {
   ASTree *astExprList = newAST(EXPR_LIST, NULL, 0, NULL, getLineNo());
+  printf("IN PARSE EXPR LIST \n");
   while(peek() != RBRACE) {
 //    appendToChildrenList(astExprList, parseExpr());
     ASTree *expr = parseExpr();
     consume(SEMICOLON);
+    printf("Current Expr is: %u\n", expr->typ);
+
     appendToChildrenList(astExprList, expr);
-    printf("after expr");
+//    printf("after expr");
 //    switch(peek()) {
 //      case
 //    }
 //    consume(SEMICOLON);
   }
-  printf("after expr list");
-  printCurrentToken();
+//  printf("after expr list");
+//  printCurrentToken();
   return astExprList;
 }
+
 ASTree* parseExpr() {
+  printf("IN PARSE EXPR \n");
+
   ASTree *e = NULL;
   switch(peek()) {
     case IF:
@@ -272,12 +320,12 @@ ASTree* parseExpr() {
       appendToChildrenList(e, parseExpr());
       consume(RPAREN);
       consume(LBRACE);
-      printf("\nIF EXPRESSION LIST:\n");
+//      printf("\nIF EXPRESSION LIST:\n");
       appendToChildrenList(e, parseExprList());
       consume(RBRACE);
       consume(ELSE);
       consume(LBRACE);
-      printf("\nELSE EXPRESSION LIST\n");
+//      printf("\nELSE EXPRESSION LIST\n");
       appendToChildrenList(e, parseExprList());
       consume(RBRACE);
 //      consume(SEMICOLON);
@@ -300,7 +348,11 @@ ASTree* parseExpr() {
       return e;
 
      case PRINTNAT:
-      e = newAST(PRINT_EXPR, parseExpr(), 0, NULL, getLineNo());
+//      ASTree *astPrintNatExpr = newAST(PRINT_EXPR, NULL, 0, NULL, getLineNo());
+      e = newAST(PRINT_EXPR, NULL, 0, NULL, getLineNo());
+      consume(PRINTNAT);
+      appendToChildrenList(e, parseExpr());
+//      e = astPrintNatExpr;
 //      consume(SEMICOLON);
       return e;
 
@@ -310,9 +362,18 @@ ASTree* parseExpr() {
 //      consume(SEMICOLON);
       return e;
 
+     case NEW:
+       consume(NEW);
+       ASTree *astNewExpr = newAST(NEW_EXPR, NULL, 0, NULL, getLineNo());
+       appendToChildrenList(astNewExpr, parseId());
+       consume(LPAREN);
+       consume(RPAREN);
+       e = astNewExpr;
+       break;
+
      default:
       e = parseSimpleExpr();
-      printf("SIMPLE EXPR RECEIVED IS: %u", e->typ);
+//      printf("SIMPLE EXPR RECEIVED IS: %u", e->typ);
   }
 
 /*  if(peek() == EQUALITY) {
@@ -330,14 +391,14 @@ ASTree* parseExpr() {
   while(peek() == OR){
     consume(OR);
     if(e->typ == PLUS_EXPR) {
-      printf("child is plus expr: ");
+//      printf("child is plus expr: ");
     } else if(e->typ == MINUS_EXPR) {
-      printf("child is MInus expr: ");
+//      printf("child is MInus expr: ");
     } else if (e->typ == ID_EXPR) {
-      printf("child is ID expre.");
+//      printf("child is ID expre.");
     }
     else {
-      printf("child is unknown expr: %u", e->typ);
+//      printf("child is unknown expr: %u", e->typ);
     }
     ASTree *orExpr = newAST(OR_EXPR, e, 0, NULL, getLineNo());
 //    appendToChildrenList(orExpr, parseExpr());
@@ -347,8 +408,8 @@ ASTree* parseExpr() {
 
   while(peek() == ASSIGN) {
     consume(ASSIGN);
-    printf("consuming assign");
-    printCurrentToken();
+//    printf("consuming assign");
+//    printCurrentToken();
     ASTree *lhs;
     if(e->typ == ID_EXPR) {
       lhs = e->children->data;
@@ -359,12 +420,12 @@ ASTree* parseExpr() {
     appendToChildrenList(astAssignExpr, parseExpr());
     e = astAssignExpr;
 //    consume(SEMICOLON);
-    printf("end of assign");
+//    printf("end of assign");
 //    return e;
   }
 
-  printf("\n\nafter assign; RETURNUNG %u \n\n", e->typ);
-  printCurrentToken();
+//  printf("\n\nafter assign; RETURNUNG %u \n\n", e->typ);
+//  printCurrentToken();
     /*if(peek() != SEMICOLON) {
 //      appendToChildrenList(e, parseExpr());
       parseExpr(e);
@@ -373,6 +434,7 @@ ASTree* parseExpr() {
 //  }
   return e;
 }
+
 ASTree* parseSimpleExpr() {
   ASTree* se = parseSimpleArithmeticExpr();
   if(peek() == EQUALITY) {
@@ -391,26 +453,26 @@ ASTree* parseSimpleExpr() {
 
 ASTree* parseSimpleArithmeticExpr() {
   ASTree *se = parseTerm();
-  printf("after parse term:");
-  printCurrentToken();
+//  printf("after parse term:");
+//  printCurrentToken();
   while ((peek() == PLUS)||(peek() == MINUS)) {
 //    ASTree *op = NULL;
     if(peek() == PLUS) {
-    printf("INSIDE PLUS LOOP");
+//    printf("INSIDE PLUS LOOP");
       ASTree *astPlusExpr = newAST(PLUS_EXPR, se, 0, NULL, getLineNo());
       consume(PLUS);
       appendToChildrenList(astPlusExpr, parseTerm());
       se = astPlusExpr;
     } else if( peek() == MINUS){
-        printf("INSIDE MINUS LOOP");
+//        printf("INSIDE MINUS LOOP");
       ASTree *astMinusExpr = newAST(MINUS_EXPR, se, 0, NULL, getLineNo());
       consume(MINUS);
       appendToChildrenList(astMinusExpr, parseTerm());
       se = astMinusExpr;
     }
   }
-  printf("after plus minus: %u", se->typ);
-  printCurrentToken();
+//  printf("after plus minus: %u", se->typ);
+//  printCurrentToken();
   return se;
 }
 
@@ -457,14 +519,22 @@ ASTree* parseFactor() {
 
     case ID:
       e = parseIdExpr();
+      if(peek() == LPAREN ) {
+        consume(LPAREN);
+        ASTree *astMethodCall = newAST(METHOD_CALL_EXPR, e, 0, NULL, getLineNo());
+        appendToChildrenList(astMethodCall, parseExpr());
+        e = astMethodCall;
+      }
       break;
 
     case NUL:
       e = newAST(NULL_EXPR, NULL, getNatAttribute(), getIdAttribute(), getLineNo());
+      consume(NUL);
       break;
 
     case THIS:
       e = newAST(THIS_EXPR, NULL, getNatAttribute(), getIdAttribute(), getLineNo());
+      consume(THIS);
       break;
 
     case OBJECT:
@@ -505,8 +575,8 @@ ASTree* parseFactor() {
         appendToChildrenList(astDotIdExpr, parseId());
         e = astDotIdExpr;
       }
-      printf("\nCurrent token at end of DOT Loop\n");
-      printCurrentToken();
+//      printf("\nCurrent token at end of DOT Loop\n");
+//      printCurrentToken();
     }
   return e;
 }
@@ -528,165 +598,6 @@ ASTree* parseIdExpr() {
   ASTree *astIdExpr = newAST(ID_EXPR, parseId(), 0, NULL, getLineNo());
   return astIdExpr;
 }
-
-/*TreeNode * stmt_sequence(void)
-{ TreeNode * t = statement();
-  TreeNode * p = t;
-  while ((token!=ENDFILE) && (token!=END) &&
-         (token!=ELSE) && (token!=UNTIL))
-  { TreeNode * q;
-    match(SEMI);
-    q = statement();
-    if (q!=NULL) {
-      if (t==NULL) t = p = q;
-      else *//* now p cannot be NULL either *//*
-      { p->sibling = q;
-        p = q;
-      }
-    }
-  }
-  return t;
-}
-
-TreeNode * statement(void)
-{ TreeNode * t = NULL;
-  switch (token) {
-    case IF : t = if_stmt(); break;
-    case REPEAT : t = repeat_stmt(); break;
-    case ID : t = assign_stmt(); break;
-    case READ : t = read_stmt(); break;
-    case WRITE : t = write_stmt(); break;
-    default : syntaxError("unexpected token -> ");
-              printToken(token,tokenString);
-              token = getToken();
-              break;
-  } *//* end case *//*
-  return t;
-}
-
-TreeNode * if_stmt(void)
-{ TreeNode * t = newStmtNode(IfK);
-  match(IF);
-  if (t!=NULL) t->child[0] = exp();
-  match(THEN);
-  if (t!=NULL) t->child[1] = stmt_sequence();
-  if (token==ELSE) {
-    match(ELSE);
-    if (t!=NULL) t->child[2] = stmt_sequence();
-  }
-  match(END);
-  return t;
-}
-
-TreeNode * repeat_stmt(void)
-{ TreeNode * t = newStmtNode(RepeatK);
-  match(REPEAT);
-  if (t!=NULL) t->child[0] = stmt_sequence();
-  match(UNTIL);
-  if (t!=NULL) t->child[1] = exp();
-  return t;
-}
-
-TreeNode * assign_stmt(void)
-{ TreeNode * t = newStmtNode(AssignK);
-  if ((t!=NULL) && (token==ID))
-    t->attr.name = copyString(tokenString);
-  match(ID);
-  match(ASSIGN);
-  if (t!=NULL) t->child[0] = exp();
-  return t;
-}
-
-TreeNode * read_stmt(void)
-{ TreeNode * t = newStmtNode(ReadK);
-  match(READ);
-  if ((t!=NULL) && (token==ID))
-    t->attr.name = copyString(tokenString);
-  match(ID);
-  return t;
-}
-
-TreeNode * write_stmt(void)
-{ TreeNode * t = newStmtNode(WriteK);
-  match(WRITE);
-  if (t!=NULL) t->child[0] = exp();
-  return t;
-}
-
-TreeNode * exp(void)
-{ TreeNode * t = simple_exp();
-  if ((token==LT)||(token==EQ)) {
-    TreeNode * p = newExpNode(OpK);
-    if (p!=NULL) {
-      p->child[0] = t;
-      p->attr.op = token;
-      t = p;
-    }
-    match(token);
-    if (t!=NULL)
-      t->child[1] = simple_exp();
-  }
-  return t;
-}
-
-TreeNode * simple_exp(void)
-{ TreeNode * t = term();
-  while ((token==PLUS)||(token==MINUS))
-  { TreeNode * p = newExpNode(OpK);
-    if (p!=NULL) {
-      p->child[0] = t;
-      p->attr.op = token;
-      t = p;
-      match(token);
-      t->child[1] = term();
-    }
-  }
-  return t;
-}
-
-TreeNode * term(void)
-{ TreeNode * t = factor();
-  while ((token==TIMES)||(token==OVER))
-  { TreeNode * p = newExpNode(OpK);
-    if (p!=NULL) {
-      p->child[0] = t;
-      p->attr.op = token;
-      t = p;
-      match(token);
-      p->child[1] = factor();
-    }
-  }
-  return t;
-}
-
-TreeNode * factor(void)
-{ TreeNode * t = NULL;
-  switch (token) {
-    case NUM :
-      t = newExpNode(ConstK);
-      if ((t!=NULL) && (token==NUM))
-        t->attr.val = atoi(tokenString);
-      match(NUM);
-      break;
-    case ID :
-      t = newExpNode(IdK);
-      if ((t!=NULL) && (token==ID))
-        t->attr.name = copyString(tokenString);
-      match(ID);
-      break;
-    case LPAREN :
-      match(LPAREN);
-      t = exp();
-      match(RPAREN);
-      break;
-    default:
-      syntaxError("unexpected token -> ");
-      printToken(token, tokenString);
-      token = getToken();
-      break;
-    }
-  return t;
-}*/
 
 /****************************************/
 /* the primary function of the parser   */
@@ -745,19 +656,3 @@ int main( int argc, char **argv )
 
   return 0;
 }
-
-//int main(int argc, char **argv) {
-//  if(argc!=2) {
-//    printf("Usage: dj-parse filename\n");
-//    exit(-1);
-//  }
-//  yyin = fopen(argv[1],"r");
-//  if(yyin==NULL) {
-//    printf("ERROR: could not open file %s\n",argv[1]);
-//    exit(-1);
-//  }
-//  /* parse the input program */
-//  yyparse();
-//  printAST(pgmAST);
-//  return 0;
-//}
