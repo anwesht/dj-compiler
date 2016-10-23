@@ -4,7 +4,7 @@ Files:
 2. lexer.c
 3. ast.h
 4. ast.c
-5. rdp.c
+5. rdp.c (Recusive Descent Parser)
 6. makefile
 
 Compilation:
