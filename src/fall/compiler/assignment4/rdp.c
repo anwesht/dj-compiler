@@ -300,6 +300,7 @@ ASTree* parseExpr() {
       consume(ELSE);
       consume(LBRACE);
       appendToChildrenList(e, parseExprList());
+      updateLineNo(e);
       consume(RBRACE);
       return e;
 
@@ -315,6 +316,7 @@ ASTree* parseExpr() {
       consume(RPAREN);
       consume(LBRACE);
       appendToChildrenList(e, parseExprList());
+      updateLineNo(e);
       consume(RBRACE);
       return e;
 
