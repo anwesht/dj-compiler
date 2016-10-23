@@ -485,7 +485,14 @@ ASTree* parseFactor() {
     case NEW:
       consume(NEW);
       ASTree *astNewExpr = newAST(NEW_EXPR, NULL, 0, NULL, getLineNo());
-      appendToChildrenList(astNewExpr, parseId());
+      if(peek() == ID) {
+        appendToChildrenList(astNewExpr, parseId());
+      } else if (peek() == OBJECT) {
+        appendToChildrenList(astNewExpr, parseObject());
+      } else {
+        syntaxError("unexpected token -> ");
+        exit(-1);
+      }
       consume(LPAREN);
       consume(RPAREN);
       e = astNewExpr;
