@@ -19,6 +19,7 @@ ASTree* parseClassDecl(void);
 ASTree* parseId(void);
 ASTree* parseObject(void);
 ASTree* parseSuper(void);
+ASTree* parseTypeDecl(void);
 ASTree* parseVarDeclList(void);
 ASTree* parseVarDecl(void);
 
@@ -83,14 +84,14 @@ static void consume(Token t)
 }
 
 ASTree* pgmList(){
-  ASTree *pgm = newAST(PROGRAM, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  ASTree *pgm = newAST(PROGRAM, NULL, 0, NULL, lineNo);
   ASTree *classDeclList = parseClassDeclList();
   appendToChildrenList(pgm, classDeclList);
   return pgm;
 }
 
 ASTree* parseClassDeclList(){
-  ASTree *astClassDeclList = newAST(CLASS_DECL_LIST, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  ASTree *astClassDeclList = newAST(CLASS_DECL_LIST, NULL, 0, NULL, lineNo);
   while(peek() == CLASS) {
     appendToChildrenList(astClassDeclList, parseClassDecl());
   }
@@ -99,12 +100,56 @@ ASTree* parseClassDeclList(){
 
 ASTree* parseClassDecl(){
   consume(CLASS);
-  ASTree *astClassDecl = newAST(CLASS_DECL, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  ASTree *astClassDecl = newAST(CLASS_DECL, NULL, 0, NULL, lineNo);
   appendToChildrenList(astClassDecl, parseId());
   consume(EXTENDS);
   appendToChildrenList(astClassDecl, parseSuper());
   consume(LBRACE);
-  appendToChildrenList(astClassDecl, parseVarDeclList());
+  printf("After LBRACE.");
+  printCurrentToken();
+  ASTree *astVarDeclList = newAST(VAR_DECL_LIST, NULL, 0, NULL, lineNo);
+  ASTree *astMethodDeclList = newAST(METHOD_DECL_LIST, NULL, 0, NULL, lineNo);
+
+
+  //VarDecl OR MethodDecl
+  printf("peek is");
+  printCurrentToken();
+  while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
+//    appendToChildrenList(astVarDeclList, parseVarDecl());
+//    ASTree *astVarDecl = newAST(VAR_DECL, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+    ASTree *astTypeDecl = parseTypeDecl();
+    ASTree *astId = parseId();
+
+    printf("here");
+    printCurrentToken();
+    if(peek() == SEMICOLON) {
+      printf("IN var decl");
+      ASTree *astVarDecl = newAST(VAR_DECL, NULL, 0, NULL, lineNo);
+      appendToChildrenList(astVarDecl, astTypeDecl);
+      appendToChildrenList(astVarDecl, astId);
+      consume(SEMICOLON);
+      appendToChildrenList(astVarDeclList, astVarDecl);
+    } else if(peek() == LPAREN){
+      ASTree *astMethodDecl = newAST(METHOD_DECL, NULL, 0, NULL, lineNo);
+      appendToChildrenList(astMethodDecl, astTypeDecl);
+      appendToChildrenList(astMethodDecl, astId);
+      consume(LPAREN);
+      appendToChildrenList(astMethodDecl, parseTypeDecl());
+      appendToChildrenList(astMethodDecl, parseId());
+      consume(RPAREN);
+      consume(LBRACE);
+      appendToChildrenList(astMethodDecl, parseVarDeclList());
+      //append expr list.
+      consume(RBRACE);
+      appendToChildrenList(astMethodDeclList, astMethodDecl);
+    } else {
+      syntaxError("Unexpected token -> ");
+      exit(-1);
+    }
+  }
+
+  appendToChildrenList(astClassDecl, astVarDeclList);
+  appendToChildrenList(astClassDecl, astMethodDeclList);
   consume(RBRACE);
   return astClassDecl;
 }
@@ -137,23 +182,7 @@ ASTree* parseSuper(){
   }
 }
 
-ASTree* parseNatType() {
-  ASTree *astNatType = newAST(NAT_TYPE, NULL, getNatAttribute(), getIdAttribute(), lineNo);
-  consume(NATTYPE);
-  return astNatType;
-}
-
-ASTree* parseVarDeclList(){
-  ASTree *astVarDeclList = newAST(VAR_DECL_LIST, NULL, getNatAttribute(), getIdAttribute(), lineNo);
-
-  while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
-    appendToChildrenList(astVarDeclList, parseVarDecl());
-  }
-  return astVarDeclList;
-}
-
-ASTree* parseVarDecl() {
-  ASTree *astVarDecl = newAST(VAR_DECL, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+ASTree* parseTypeDecl() {
   ASTree *astTypeDecl;
   switch (peek()) {
     case ID:
@@ -169,13 +198,41 @@ ASTree* parseVarDecl() {
       syntaxError("Compiler Error. ");
       exit(-1);
   }
+  return astTypeDecl;
+}
 
-  appendToChildrenList(astVarDecl, astTypeDecl);
+ASTree* parseNatType() {
+  ASTree *astNatType = newAST(NAT_TYPE, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  consume(NATTYPE);
+  return astNatType;
+}
+
+ASTree* parseVarDeclList(){
+//  ASTree *astVarDeclList = newAST(VAR_DECL_LIST, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  ASTree *astVarDeclList = newAST(VAR_DECL_LIST, NULL, 0, NULL, lineNo);
+
+  while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
+    appendToChildrenList(astVarDeclList, parseVarDecl());
+  }
+  return astVarDeclList;
+}
+
+ASTree* parseVarDecl() {
+  ASTree *astVarDecl = newAST(VAR_DECL, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  appendToChildrenList(astVarDecl, parseTypeDecl());
   appendToChildrenList(astVarDecl, parseId());
   consume(SEMICOLON);
   return astVarDecl;
 }
 
+/*ASTree* parseMethodDeclList() {
+   ASTree *astMethodDeclList = newAST(METHOD_DECL_LIST, NULL, 0, NULL, lineNo);
+
+   while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
+     appendToChildrenList(astMethodDeclList, parseVarDecl());
+   }
+   return astVarDeclList;
+}*/
 /*TreeNode * stmt_sequence(void)
 { TreeNode * t = statement();
   TreeNode * p = t;
