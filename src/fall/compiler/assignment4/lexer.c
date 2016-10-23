@@ -327,6 +327,7 @@ TokenType getToken(void)
 //  currentTokenType.str = tokenString;       //doesn't work as this is pointer. need to copy string.
   currentTokenType.str = malloc(strlen(tokenString) + 1);
   strcpy(currentTokenType.str, tokenString);
+  currentTokenType.lineNo = lineNo;
 
   if(DEBUG) {
 //    printToken(currentToken, tokenString);

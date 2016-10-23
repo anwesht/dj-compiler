@@ -29,6 +29,7 @@ typedef enum
 typedef struct
 {  char* str;
    Token tok;
+   int lineNo;
 } TokenType;
 
 /** State definitions for the scanner DFA */
