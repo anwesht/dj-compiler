@@ -26,10 +26,11 @@ typedef enum
   ERROR
 } Token;
 
+/** Data structure to store information related to tokens. */
 typedef struct
-{  char* str;
-   Token tok;
-   int lineNo;
+{  char* str;       //The actual string/semantic value.
+   Token tok;       //Token
+   int lineNo;      //position of token in file
 } TokenType;
 
 /** State definitions for the scanner DFA */
@@ -38,24 +39,23 @@ typedef enum
   START, INASSIGN, INCOMMENT, INNUM, INID, INOR, DONE
 } State;
 
-
-/* MAXTOKENLEN is the maximum size of a token */
-#define MAXTOKENLEN 256     // max length of an identifier
+#define MAXTOKENLEN 256     // max length of an identifier token
+#define MAXRESERVED 13      // Number of reserved words.
 
 /* tokenString array stores the lexeme of each token */
-extern char tokenString[MAXTOKENLEN+1];
+extern char tokenString[MAXTOKENLEN + 1];
 
 extern int pos, lineNo;            // position and line number tracker
 extern FILE *fp;                           // file to be tokenized.
 
-/* function getToken returns the
- * next token in source file
- */
-//Token getToken(void);
+/** function getToken returns the
+  * next token in source file
+  */
 TokenType getToken(void);
 
-//static void printToken(Token t, char* tokenString);
-//void printToken(Token t, char* tokenString);
+/** Print the provided token
+  * @param t => Token to print
+  */
 void printToken(TokenType t);
 
 #endif

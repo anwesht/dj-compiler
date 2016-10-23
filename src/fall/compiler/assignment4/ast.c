@@ -9,44 +9,41 @@
 #include <stdio.h>
 #include "ast.h"
 
+/** Print Error Message
+  * @param reason => The cause of the error
+  */
 void printError(char *reason) {
   printf("AST Error: %s\n", reason);
   exit(-1);
 }
 
-/**
-  * Create a new AST node of type t
-  * ASTNodeType = enum representing different nodes
-  * ASTree = The actual AST node
-  * ASTList = A list of AST nodes
+/** Create a new AST node of type t
+  *   ASTList = A list of AST nodes
+  * @param t => ASTNodeType = enum representing different nodes
+  * @param child => ASTree* = The actual AST node
+  * @param natAttribute => Value of NatLiteral
+  * @param idAttribute => Value of Id
   */
-
 ASTree* newAST(ASTNodeType t, ASTree *child, unsigned int natAttribute,
   char *idAttribute, unsigned int lineNum) {
-//  printf("In newAST.");
-  // Allocate memory for new AST node.
+  /** Allocate memory for new AST node. */
   ASTree *toReturn = malloc(sizeof(ASTree));
   if(toReturn == NULL) printError("malloc in newAST()");
 
   /* Set the values for each member of ASTree struct. */
   toReturn->typ = t;
-  // create a linked list of children
+  /** create a linked list of children */
   ASTList *childList = malloc(sizeof(ASTList));
   if(childList == NULL) printError("malloc in newAST()");
-  /*if (child == NULL) {
-    printf("Child in newAST is null.\n");
-  } else {
-    printf("Child in newAST is not null.\n");
-  }*/
   childList->data = child;
   childList->next = NULL;
   toReturn->children = childList;
   toReturn->childrenTail = childList;
-  //set lineNumber
+  /** set lineNumber */
   toReturn->lineNumber = lineNum;
-  // set natVal
+  /** set natVal */
   toReturn->natVal = natAttribute;
-  // set idVal
+  /** set idVal */
   if(idAttribute == NULL) toReturn->idVal = NULL;
   else {
     char *copyStr = malloc(strlen(idAttribute) + 1);
@@ -57,7 +54,6 @@ ASTree* newAST(ASTNodeType t, ASTree *child, unsigned int natAttribute,
   //todo set staticClassNum, staticMemberNum during Type Checking
   // staticClassNum = ;
   // staticMemberNum = ;
-//  printf("End of newAST.");
   return toReturn;
 }
 
@@ -74,7 +70,6 @@ void appendToChildrenList(ASTree *parent, ASTree *newChild) {
     //printf("childrenTail data is NULL.");
     parent->childrenTail->data = newChild;
   } else { //tail of children is currently nonempty; append new child to list
-    //printf("childrenTail data is Not NULL.");
     ASTList *newList = malloc(sizeof(ASTList));
     if(newList == NULL) printError("malloc in appendAST()");
     newList->data = newChild;
@@ -82,12 +77,10 @@ void appendToChildrenList(ASTree *parent, ASTree *newChild) {
     parent->childrenTail->next = newList;
     parent->childrenTail = newList;
   }
-//  printf("End of append.");
 }
 
-/* Print the type of this node and any node attributes */
+/** Print the type of this node and any node attributes */
 void printNodeTypeAndAttribute(ASTree *t) {
-//  printf("In print node type and attributes.");
   if(t == NULL) return;
   switch(t->typ) {
       case PROGRAM:                 printf("PROGRAM "); break;
@@ -130,25 +123,22 @@ void printNodeTypeAndAttribute(ASTree *t) {
         printError("unknown node type in printNodeTypeAndAttribute()");
     }
   printf(" (ends on line %u)", t->lineNumber);
-//  printf("End of print node type and attributes.");
 }
 
 /* print tree in preorder */
 void printASTree(ASTree *t, int depth) {
-//  printf("In print ASTree");
   if(t == NULL) return;
   printf("%d:",depth);
   int i = 0;
   for(; i < depth; i++) printf("  ");
   printNodeTypeAndAttribute(t);
   printf("\n");
-  //recursively print all children
+  /** recursively print all children */
   ASTList *childListIterator = t->children;
   while(childListIterator != NULL) {
     printASTree(childListIterator->data, depth + 1);
     childListIterator = childListIterator->next;
   }
-//  printf("End of print node type and attributes.");
 }
 
 /* Print the AST to stdout with indentations marking tree depth. */

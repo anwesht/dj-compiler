@@ -4,11 +4,6 @@
   * Code adapted from Tiny Scanner implementation in Compiler Construction: Principles and Practice by K. Louden
   */
 
-/*#include <stdio.h>
-#include <stdlib.h>     //free(), size_t
-#include <ctype.h>      //isdigit(), isalpha()
-#include <unistd.h>     //NULL
-#include <string.h>     //strcmp()*/
 #include "lexer.h"
 
 #ifndef FALSE
@@ -19,9 +14,6 @@
 #define TRUE 1
 #endif
 
-//#define MAXTOKENLEN 256     // max length of an identifier
-#define MAXRESERVED 13
-
 char *curLine;                      // current line buffer
 int pos = 0, lineNo = 0;            // position and line number tracker
 ssize_t lineLength = 0;             // length of current line
@@ -30,23 +22,6 @@ char tokenString[MAXTOKENLEN + 1];  // current token buffer.
 FILE *fp;                           // file to be tokenized.
 int isEOF = FALSE;
 int DEBUG = FALSE;
-
-/** State definitions for the scanner DFA */
-/*typedef enum
-{
-  START, INASSIGN, INCOMMENT, INNUM, INID, INOR, DONE
-} State;*/
-
-/** Token definition for DJ */
-/*typedef enum
-{
-  CLASS, ID, EXTENDS, MAIN, NATTYPE, OBJECT,
-  NATLITERAL, PRINTNAT, READNAT, IF, ELSE, FOR,
-  PLUS, MINUS, TIMES, EQUALITY, GREATER, OR, NOT,
-  ASSIGN, NUL, NEW, THIS, DOT, SEMICOLON,
-  LBRACE, RBRACE, LPAREN, RPAREN, ENDOFFILE,
-  ERROR
-} Token;*/
 
 /** lookup table of reserved words */
 static struct
@@ -113,8 +88,6 @@ static void ungetNextChar(void) {
   * @param t => Token to output
   * @param tokenString => The string representing the token. The attribute of the Token incase of NATLITERAL and ID
   */
-//static void printToken(Token t, char* tokenString) {
-//void printToken(Token t, char* tokenString) {
 void printToken(TokenType tt) {
   Token t = tt.tok;
   char* tokenString = tt.str;
@@ -159,7 +132,6 @@ void printToken(TokenType tt) {
   * Incase of error: Returns ERROR token. Next time getToken is called, continues tokenizing from the next character.
   * @return currentToken => The longest token identified.
   */
-//Token getToken(void)
 TokenType getToken(void)
 {
   int currentTokenIndex = 0;        // tokenString index
@@ -298,9 +270,6 @@ TokenType getToken(void)
         }
         break;
 
-      /*case INERROR:
-        state = DONE;*/
-
       case DONE: /** Do nothing */
 
       default: /** should never happen */
@@ -324,54 +293,13 @@ TokenType getToken(void)
     }
   }
   currentTokenType.tok = currentToken;
-//  currentTokenType.str = tokenString;       //doesn't work as this is pointer. need to copy string.
+  /** need to Allocate memory and copy string. */
   currentTokenType.str = malloc(strlen(tokenString) + 1);
   strcpy(currentTokenType.str, tokenString);
   currentTokenType.lineNo = lineNo;
 
   if(DEBUG) {
-//    printToken(currentToken, tokenString);
     printToken(currentTokenType);
   }
-  //  return currentToken;
   return currentTokenType;
 }
-/*
-
-int main( int argc, char **argv )
-{
-  if( argc != 2)
-  {
-    printf("Usage: lexer <file_name> \n");
-    exit(-1);
-  }
-
-  char *fileName = argv[1];
-  char c;
-
-  printf("file name: %s \n", fileName );
-  */
-/** Open given file in read mode *//*
-
-  fp = fopen( fileName, "r" );
-
-  if (fp == NULL)
-  {
-    printf("Error Opening File : %s \n", argv[1] );
-    exit(-1);
-  }
-
-  */
-/** Scan till end of file *//*
-
-  while (!isEOF) {
-    getToken();
-  }
-
-  */
-/** Close the file *//*
-
-  fclose(fp);
-
-  return 0;
-}*/
