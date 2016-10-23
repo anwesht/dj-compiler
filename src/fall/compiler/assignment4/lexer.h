@@ -26,6 +26,11 @@ typedef enum
   ERROR
 } Token;
 
+typedef struct
+{  char* str;
+   Token tok;
+} TokenType;
+
 /** State definitions for the scanner DFA */
 typedef enum
 {
@@ -45,9 +50,11 @@ extern FILE *fp;                           // file to be tokenized.
 /* function getToken returns the
  * next token in source file
  */
-Token getToken(void);
+//Token getToken(void);
+TokenType getToken(void);
 
 //static void printToken(Token t, char* tokenString);
-void printToken(Token t, char* tokenString);
+//void printToken(Token t, char* tokenString);
+void printToken(TokenType t);
 
 #endif

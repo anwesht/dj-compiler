@@ -6,7 +6,10 @@
 #include "lexer.h"
 #include "ast.h"
 
-static Token token; /* holds current token */
+//static Token token; /* holds current token */
+//static Token nextToken; /* holds the lookahead token */
+static TokenType token; /* holds current token */
+static TokenType nextToken; /* holds the lookahead token */
 
 /* function prototypes for recursive calls */
 //static TreeNode * stmt_sequence(void);
@@ -17,31 +20,59 @@ ASTree* parseId(void);
 ASTree* parseObject(void);
 ASTree* parseSuper(void);
 ASTree* parseVarDeclList(void);
+ASTree* parseVarDecl(void);
+
+ASTree* parseNatType(void);
 
 static void syntaxError(char * message)
 { /*fprintf(listing,"\n>>> ");
   fprintf(listing,"Syntax error at line %d: %s",lineno,message);*/
   printf("\n>>> ");
   printf("Syntax error at line %d: %s",lineNo, message);
-  printToken(token, tokenString);
+//  printToken(token, tokenString);
+  printToken(token);
 //  exit(-1);
 //  Error = TRUE;
 }
-
+/** Peek at the current token */
 Token peek() {
-  return token;
+  return token.tok;
+}
+
+/** Get idAttribute of current token */
+char* getIdAttribute() {
+  if(token.tok == ID) {
+    return token.str;
+  } else {
+    return NULL;
+  }
+}
+
+/** Get natAttribute of current token */
+int getNatAttribute() {
+  if(token.tok == NATLITERAL) {
+    return atoi(token.str);
+  } else {
+    return 0;
+  }
+}
+
+Token lookahead() {
+  return nextToken.tok;
 }
 
 void printCurrentToken(){
     printf("\n    Current Token Is: ");
-    printToken(token, tokenString);
+//    printToken(token, tokenString);
+    printToken(token);
     printf("\n");
 }
 
 static void consume(Token t)
 {
   if (t == peek()) {
-    token = getToken();
+    token = nextToken;
+    nextToken = getToken();
   }
   else {
     syntaxError("unexpected token -> ");
@@ -52,42 +83,43 @@ static void consume(Token t)
 }
 
 ASTree* pgmList(){
-  ASTree *pgm = newAST(PROGRAM, NULL, 0, NULL, lineNo);
+  ASTree *pgm = newAST(PROGRAM, NULL, getNatAttribute(), getIdAttribute(), lineNo);
   ASTree *classDeclList = parseClassDeclList();
   appendToChildrenList(pgm, classDeclList);
   return pgm;
 }
 
 ASTree* parseClassDeclList(){
-  ASTree *classDeclList = newAST(CLASS_DECL_LIST, NULL, 0, NULL, lineNo);
+  ASTree *astClassDeclList = newAST(CLASS_DECL_LIST, NULL, getNatAttribute(), getIdAttribute(), lineNo);
   while(peek() == CLASS) {
-    appendToChildrenList(classDeclList, parseClassDecl());
+    appendToChildrenList(astClassDeclList, parseClassDecl());
   }
-  return classDeclList;
+  return astClassDeclList;
 }
 
 ASTree* parseClassDecl(){
   consume(CLASS);
-  ASTree *classDecl = newAST(CLASS_DECL, NULL, 0, NULL, lineNo);
-  appendToChildrenList(classDecl, parseId());
+  ASTree *astClassDecl = newAST(CLASS_DECL, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  appendToChildrenList(astClassDecl, parseId());
   consume(EXTENDS);
-  appendToChildrenList(classDecl, parseSuper());
+  appendToChildrenList(astClassDecl, parseSuper());
   consume(LBRACE);
-  appendToChildrenList(classDecl, parseVarDeclList());
+  appendToChildrenList(astClassDecl, parseVarDeclList());
   consume(RBRACE);
-  return classDecl;
+  return astClassDecl;
 }
 
 ASTree* parseId(){
 //  return newAST(AST_ID, NULL, 0, tokenString, lineNo);
-  ASTree *astId = newAST(AST_ID, NULL, 0, tokenString, lineNo);
+//  ASTree *astId = newAST(AST_ID, NULL, 0, tokenString, lineNo);
+  ASTree *astId = newAST(AST_ID, NULL, getNatAttribute(), getIdAttribute(), lineNo);
   consume(ID);
   return astId;
 }
 
 ASTree* parseObject(){
 //  return newAST(AST_ID, NULL, 0, tokenString, lineNo);
-  ASTree *astObj = newAST(OBJ_TYPE, NULL, 0, NULL, lineNo);
+  ASTree *astObj = newAST(OBJ_TYPE, NULL, getNatAttribute(), getIdAttribute(), lineNo);
   consume(OBJECT);
   return astObj;
 }
@@ -105,10 +137,43 @@ ASTree* parseSuper(){
   }
 }
 
+ASTree* parseNatType() {
+  ASTree *astNatType = newAST(NAT_TYPE, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  consume(NATTYPE);
+  return astNatType;
+}
+
 ASTree* parseVarDeclList(){
-//  return newAST(VAR_DECL_LIST, NULL, 0, NULL, lineNo);
-//  consume(ID);
-  return newAST(VAR_DECL_LIST, NULL, 0, NULL, lineNo);
+  ASTree *astVarDeclList = newAST(VAR_DECL_LIST, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+
+  while((peek() == ID || peek() == OBJECT || peek() == NATTYPE) && (lookahead() == ID)) {
+    appendToChildrenList(astVarDeclList, parseVarDecl());
+  }
+  return astVarDeclList;
+}
+
+ASTree* parseVarDecl() {
+  ASTree *astVarDecl = newAST(VAR_DECL, NULL, getNatAttribute(), getIdAttribute(), lineNo);
+  ASTree *astTypeDecl;
+  switch (peek()) {
+    case ID:
+      astTypeDecl = parseId();
+      break;
+    case OBJECT:
+      astTypeDecl = parseObject();
+      break;
+    case NATTYPE:
+      astTypeDecl = parseNatType();
+      break;
+    default:
+      syntaxError("Compiler Error. ");
+      exit(-1);
+  }
+
+  appendToChildrenList(astVarDecl, astTypeDecl);
+  appendToChildrenList(astVarDecl, parseId());
+  consume(SEMICOLON);
+  return astVarDecl;
 }
 
 /*TreeNode * stmt_sequence(void)
@@ -280,8 +345,9 @@ ASTree* parse(void)
 { ASTree *t;
 //  token = getToken();
   token = getToken();
+  nextToken = getToken();
   t = pgmList();
-  if (token != ENDOFFILE)
+  if (token.tok != ENDOFFILE)
     syntaxError("Code ends before file\n");
   return t;
 }

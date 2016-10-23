@@ -114,7 +114,10 @@ static void ungetNextChar(void) {
   * @param tokenString => The string representing the token. The attribute of the Token incase of NATLITERAL and ID
   */
 //static void printToken(Token t, char* tokenString) {
-void printToken(Token t, char* tokenString) {
+//void printToken(Token t, char* tokenString) {
+void printToken(TokenType tt) {
+  Token t = tt.tok;
+  char* tokenString = tt.str;
   switch(t) {
     case CLASS:         printf("CLASS "); break;
     case ID:            printf("ID(%s) ", tokenString); break;
@@ -156,12 +159,14 @@ void printToken(Token t, char* tokenString) {
   * Incase of error: Returns ERROR token. Next time getToken is called, continues tokenizing from the next character.
   * @return currentToken => The longest token identified.
   */
-Token getToken(void)
+//Token getToken(void)
+TokenType getToken(void)
 {
   int currentTokenIndex = 0;        // tokenString index
   int save;                         // flag to indicate save current char to tokenString
   Token currentToken;               // current token
   State state = START;              // track current state of the DFA
+  TokenType currentTokenType;
 
   while (state != DONE) {
     int c = getNextChar();
@@ -318,11 +323,17 @@ Token getToken(void)
       }
     }
   }
-  if(DEBUG) {
-    printToken(currentToken, tokenString);
-  }
+  currentTokenType.tok = currentToken;
+//  currentTokenType.str = tokenString;       //doesn't work as this is pointer. need to copy string.
+  currentTokenType.str = malloc(strlen(tokenString) + 1);
+  strcpy(currentTokenType.str, tokenString);
 
-  return currentToken;
+  if(DEBUG) {
+//    printToken(currentToken, tokenString);
+    printToken(currentTokenType);
+  }
+  //  return currentToken;
+  return currentTokenType;
 }
 /*
 
