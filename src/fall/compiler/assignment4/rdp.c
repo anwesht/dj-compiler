@@ -475,7 +475,8 @@ ASTree* parseFactor() {
       e = parseIdExpr();
       if(peek() == LPAREN ) {
         consume(LPAREN);
-        ASTree *astMethodCall = newAST(METHOD_CALL_EXPR, e, 0, NULL, getLineNo());
+        ASTree *astId = e->children->data;
+        ASTree *astMethodCall = newAST(METHOD_CALL_EXPR, astId, 0, NULL, getLineNo());
         appendToChildrenList(astMethodCall, parseExpr());
         consume(RPAREN);
         e = astMethodCall;
@@ -503,14 +504,11 @@ ASTree* parseFactor() {
       break;
 
     case NOT:
-      printf("consuming NOT");
       while(peek() == NOT) {
-        printf("consuming NOT");
         consume(NOT);
         ASTree *astNotExpr = newAST(NOT_EXPR, e, 0, NULL, getLineNo());
 //          appendToChildrenList(astNotExpr, parseExpr());
         appendToChildrenList(astNotExpr, parseFactor());
-        printf("appending Expr to Not.");
         e = astNotExpr;
       }
     //      consume(NOT);
