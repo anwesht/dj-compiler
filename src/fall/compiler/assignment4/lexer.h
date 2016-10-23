@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>     //free(), size_t
 #include <ctype.h>      //isdigit(), isalpha()
-#include <unistd.h>     //NULL
 #include <string.h>     //strcmp()
 
 #ifndef FALSE

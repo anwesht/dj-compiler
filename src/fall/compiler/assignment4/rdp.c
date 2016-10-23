@@ -6,8 +6,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>     //NULL
-#include <string.h>     //strcmp()
 #include "lexer.h"
 #include "ast.h"
 
