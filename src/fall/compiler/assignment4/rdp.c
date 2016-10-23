@@ -44,6 +44,7 @@ static void syntaxError(char * message)
   printf("Syntax error at line %d: %s",getLineNo(), message);
 //  printToken(token, tokenString);
   printToken(token);
+  printf("\n");
 //  exit(-1);
 //  Error = TRUE;
 }
@@ -398,6 +399,7 @@ ASTree* parseFactor() {
         consume(LPAREN);
         ASTree *astMethodCall = newAST(METHOD_CALL_EXPR, e, 0, NULL, getLineNo());
         appendToChildrenList(astMethodCall, parseExpr());
+        consume(RPAREN);
         e = astMethodCall;
       }
       break;
