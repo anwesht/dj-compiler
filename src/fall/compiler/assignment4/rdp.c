@@ -272,7 +272,7 @@ ASTree* parseTypeDecl() {
       break;
 
     default:
-      syntaxError("Compiler Error. ");
+      syntaxError("unexpected token -> ");
       exit(-1);
   }
   return astTypeDecl;
@@ -304,7 +304,7 @@ ASTree* parseVarDecl() {
 
 ASTree* parseExprList() {
   ASTree *astExprList = newAST(EXPR_LIST, NULL, 0, NULL, getLineNo());
-  if(peek() == RBRACE) {
+  if(peek() == RBRACE || peek() == ENDOFFILE) {
     syntaxError("Expression List empty.\nunexpected token -> ");
     exit(-1);
   }
@@ -554,7 +554,8 @@ ASTree* parse(void) {
   nextToken = getToken();
   t = parsePGM();
   if (token.tok != ENDOFFILE) {
-    syntaxError("Code ends before file\n");
+    syntaxError("Code ends before EOF\nunexpected token -> ");
+    exit(-1);
   }
   return t;
 }
