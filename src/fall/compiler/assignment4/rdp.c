@@ -291,6 +291,22 @@ ASTree* parseExpr() {
       appendToChildrenList(e, parseExprList());
       consume(RBRACE);
       return e;
+
+    /*   case NOT:
+      printf("consuming NOT");
+      while(peek() == NOT) {
+        printf("consuming NOT");
+        consume(NOT);
+        ASTree *astNotExpr = newAST(NOT_EXPR, e, 0, NULL, getLineNo());
+        appendToChildrenList(astNotExpr, parseExpr());
+        printf("appending Expr to Not.");
+
+        e = astNotExpr;
+      }
+    //      consume(NOT);
+    //      e = newAST(NOT_EXPR, NULL, 0, NULL, getLineNo());
+    //      appendToChildrenList(e, parseExpr());
+      break;*/
 /*
      case PRINTNAT:
       e = newAST(PRINT_EXPR, NULL, 0, NULL, getLineNo());
@@ -318,27 +334,69 @@ ASTree* parseExpr() {
       e = parseSimpleExpr();
   }
 
-  while(peek() == OR){
-    consume(OR);
-    ASTree *orExpr = newAST(OR_EXPR, e, 0, NULL, getLineNo());
-    appendToChildrenList(orExpr, parseSimpleExpr());
-    e = orExpr;
+  if(peek() == OR) {
+    while(peek() == OR){
+      consume(OR);
+      ASTree *orExpr = newAST(OR_EXPR, e, 0, NULL, getLineNo());
+      appendToChildrenList(orExpr, parseSimpleExpr());
+      e = orExpr;
+    }
+    return e;
   }
 
-  while(peek() == ASSIGN) {
-    consume(ASSIGN);
-    ASTree *lhs;
-    if(e->typ == ID_EXPR) {
-      lhs = e->children->data;
-    } else {
-      lhs = e;
-    }
-    ASTree *astAssignExpr = newAST(ASSIGN_EXPR, lhs, 0, NULL, getLineNo());
-    appendToChildrenList(astAssignExpr, parseExpr());
-    e = astAssignExpr;
-  }
+ /* if(peek() == ASSIGN){
+   ASTree *lhs;
+   if(e->typ == ID_EXPR) {
+     lhs = e->children->data;
+   } else {
+     lhs = e;
+   }
+   consume(ASSIGN);
+   ASTree *astAssignExpr = newAST(ASSIGN_EXPR, lhs, 0, NULL, getLineNo());
+   ASTree *rhs = parseExpr();
+//   ASTree *rhs = parseSimpleExpr();
+   appendToChildrenList(astAssignExpr, rhs);
+   e = astAssignExpr;
+ }*/
+// while(peek() == ASSIGN) {
+//   consume(ASSIGN);
+//   ASTree *lhs;
+//   if(e->typ == ID_EXPR) {
+//     lhs = e->children->data;
+//   } else {
+//     lhs = e;
+//   }
+//   ASTree *astAssignExpr = newAST(ASSIGN_EXPR, lhs, 0, NULL, getLineNo());
+////   appendToChildrenList(astAssignExpr, parseExpr());
+//   appendToChildrenList(astAssignExpr, parseSimpleExpr());
+//   e = astAssignExpr;
+// }
+
+ /*while(peek() == OR){
+   consume(OR);
+   ASTree *orExpr = newAST(OR_EXPR, e, 0, NULL, getLineNo());
+   appendToChildrenList(orExpr, parseSimpleExpr());
+   e = orExpr;
+ }*/
   return e;
 }
+
+/*
+ASTree* parseAssignExpr() {
+  ASTree *lhs;
+  if(e->typ == ID_EXPR) {
+    lhs = e->children->data;
+  } else {
+    lhs = e;
+  }
+  consume(ASSIGN);
+  ASTree *astAssignExpr = newAST(ASSIGN_EXPR, lhs, 0, NULL, getLineNo());
+  ASTree *rhs = parseExpr();
+  appendToChildrenList(astAssignExpr, rhs);
+  e = astAssignExpr;
+
+}
+*/
 
 ASTree* parseSimpleExpr() {
   ASTree* se = parseSimpleArithmeticExpr();
@@ -353,6 +411,26 @@ ASTree* parseSimpleExpr() {
       appendToChildrenList(astGreaterThanExpr, parseSimpleArithmeticExpr());
       se = astGreaterThanExpr;
   }
+  /*while(peek() == OR){
+     consume(OR);
+     ASTree *orExpr = newAST(OR_EXPR, se, 0, NULL, getLineNo());
+     appendToChildrenList(orExpr, parseSimpleExpr());
+     se = orExpr;
+   }*/
+    if(peek() == ASSIGN){
+      ASTree *lhs;
+      if(se->typ == ID_EXPR) {
+        lhs = se->children->data;
+      } else {
+        lhs = se;
+      }
+      consume(ASSIGN);
+      ASTree *astAssignExpr = newAST(ASSIGN_EXPR, lhs, 0, NULL, getLineNo());
+      ASTree *rhs = parseExpr();
+   //   ASTree *rhs = parseSimpleExpr();
+      appendToChildrenList(astAssignExpr, rhs);
+      se = astAssignExpr;
+    }
   return se;
 }
 
@@ -425,10 +503,50 @@ ASTree* parseFactor() {
       break;
 
     case NOT:
-      consume(NOT);
-      e = newAST(NOT_EXPR, NULL, 0, NULL, getLineNo());
-      appendToChildrenList(e, parseExpr());
+      printf("consuming NOT");
+      while(peek() == NOT) {
+        printf("consuming NOT");
+        consume(NOT);
+        ASTree *astNotExpr = newAST(NOT_EXPR, e, 0, NULL, getLineNo());
+//          appendToChildrenList(astNotExpr, parseExpr());
+        appendToChildrenList(astNotExpr, parseFactor());
+        printf("appending Expr to Not.");
+        e = astNotExpr;
+      }
+    //      consume(NOT);
+    //      e = newAST(NOT_EXPR, NULL, 0, NULL, getLineNo());
+    //      appendToChildrenList(e, parseExpr());
       break;
+
+    /*case NOT:
+      while(peek() == NOT) {
+        consume(NOT);
+        ASTree *astNotExpr = newAST(NOT_EXPR, NULL, 0, NULL, getLineNo());
+        appendToChildrenList(astNotExpr, parseExpr());
+        return e;
+
+      }
+//      consume(NOT);
+//      e = newAST(NOT_EXPR, NULL, 0, NULL, getLineNo());
+//      appendToChildrenList(e, parseExpr());
+      break;*/
+
+      /*case NOT:
+         printf("consuming NOT");
+         while(peek() == NOT) {
+           printf("consuming NOT");
+           consume(NOT);
+           ASTree *astNotExpr = newAST(NOT_EXPR, e, 0, NULL, getLineNo());
+//           appendToChildrenList(astNotExpr, parseExpr());
+           appendToChildrenList(astNotExpr, parseFactor());
+           printf("appending Expr to Not.");
+
+           e = astNotExpr;
+         }
+       //      consume(NOT);
+       //      e = newAST(NOT_EXPR, NULL, 0, NULL, getLineNo());
+       //      appendToChildrenList(e, parseExpr());
+         break;*/
 
     case PRINTNAT:
      consume(PRINTNAT);
