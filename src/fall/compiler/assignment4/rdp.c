@@ -304,6 +304,10 @@ ASTree* parseVarDecl() {
 
 ASTree* parseExprList() {
   ASTree *astExprList = newAST(EXPR_LIST, NULL, 0, NULL, getLineNo());
+  if(peek() == RBRACE) {
+    syntaxError("Expression List empty.\nunexpected token -> ");
+    exit(-1);
+  }
   while(peek() != RBRACE) {
     ASTree *expr = parseExpr();
     consume(SEMICOLON);
