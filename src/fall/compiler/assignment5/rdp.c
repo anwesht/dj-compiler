@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include "ast.h"
+#include "symtbl.h"
 
 static TokenType token;     /* holds current token */
 static TokenType nextToken; /* holds the lookahead token */
@@ -589,6 +590,8 @@ int main( int argc, char **argv )
   ASTree *pgmAST = parse();
   /* Print AST */
   printAST(pgmAST);
+
+  setupSymbolTables(pgmAST);
 
   /** Close the file */
   fclose(fp);

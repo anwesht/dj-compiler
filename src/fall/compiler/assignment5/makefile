@@ -1,4 +1,4 @@
-all: parser
+all: tc
 
-parser: lexer.c ast.c rdp.c
-	gcc lexer.c ast.c rdp.c -o dj-ast
+tc: lexer.c ast.c symtbl.c rdp.c
+	gcc lexer.c ast.c rdp.c symtbl.c -o dj-tc
