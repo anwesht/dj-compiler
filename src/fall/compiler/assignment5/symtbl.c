@@ -59,35 +59,36 @@ int classNameToNumber(char *className) {
   return returnNum;
 }
 
-void setNumMainBlockLocals(ASTree *mainVarDeclList) {
-  numMainBlockLocals = 0;
-  ASTList *currentNode = mainVarDeclList->children;
-  while (currentNode != NULL) {
-    numMainBlockLocals += 1;
+int getLengthOfList(ASTList *currentNode){
+  int length = 0;
+  printf("Fields are:  %p" ,currentNode);
+
+  while (currentNode != NULL && currentNode->data != NULL) {
+    length += 1;
     currentNode = currentNode->next;
   }
+  printf("Length of current list is: %d\n" , length);
+  return length;
+}
+
+void setNumMainBlockLocals(ASTList *mainVarDeclList) {
+  numMainBlockLocals = getLengthOfList(mainVarDeclList);
   printf("length of local vars is: %d\n", numMainBlockLocals);
 }
 
-void setNumClasses(ASTree *classDeclList) {
-  numClasses = 0;
-  ASTList *currentNode = classDeclList->children;
-  while (currentNode != NULL) {
-    numClasses += 1;
-    currentNode = currentNode->next;
-  }
+void setNumClasses(ASTList *classDeclList) {
+  numClasses = getLengthOfList(classDeclList);
   printf("Number of classes is: %d\n", numClasses);
 }
 
-void setupClassesToNumberMap(ASTree *classDeclList) {
-  ASTList *currentNode = classDeclList->children;
+void setupClassesToNumberMap(ASTList *currentNode) {
   ASTree *classDecl = NULL;
   classNameToNumberMap = (Map*) Calloc(numClasses+1, sizeof(Map));
   char *className = "Object";
 
   classNameToNumberMap[0].name = className;
   int classNum = 1;
-  while (currentNode != NULL) {
+  while (currentNode != NULL && currentNode->data != NULL) {
     classDecl = currentNode->data;
     char *className = classDecl->children->data->idVal;
 
@@ -203,8 +204,10 @@ void setupClassesST(ASTree *classDeclList) {
     stEntry->superclassLineNumber = classDeclNode->data->lineNumber;
 
 
-//    classDeclNode = classDeclNode->next;
-//    setVarDeclList(classDeclNode);
+    classDeclNode = classDeclNode->next;
+    stEntry->numVars = getLengthOfList(classDeclNode->data->children);
+    printf("Number of fields is : %d\n " , stEntry->numVars);
+
     classesST[classNum] = *stEntry;
     classNum += 1;
     currentNode = currentNode->next;
@@ -234,9 +237,9 @@ void setupSymbolTables(ASTree *fullProgramAST) {
 
   ASTree *classDeclList = fullProgramAST->children->data;
   printf("calling set numClasses\n");
-  setNumClasses(classDeclList);
+  setNumClasses(classDeclList->children);
   printf("calling Setup Classes to NUmber map\n");
-  setupClassesToNumberMap(classDeclList);
+  setupClassesToNumberMap(classDeclList->children);
 
   printf("Calling print classes to number map\n");
   printClassesToNumberMap();
@@ -245,7 +248,7 @@ void setupSymbolTables(ASTree *fullProgramAST) {
 
   ASTree *mainVarDeclList = fullProgramAST->children->next->data;
   printf("calling set num main block st\n");
-  setNumMainBlockLocals(mainVarDeclList);
+  setNumMainBlockLocals(mainVarDeclList->children);
   printf("calling setup main block st\n");
   setupMainBlockST(mainVarDeclList);
 
