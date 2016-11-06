@@ -191,6 +191,7 @@ expr : arithmeticExpr  { $$ = $1; }
          $$ = newAST(NOT_EXPR, $2, 0, NULL, yylineno);
        }
      | assignExpr      { $$ = $1; }
+     | dotAssignExpr   { $$ = $1; }
      | constructorExpr { $$ = $1; }
      | ifElseExpr      { $$ = $1; }
      | forExpr         { $$ = $1; }
@@ -242,16 +243,19 @@ cmpExpr : expr EQUALITY expr
           }
         ;
 
-assignExpr : lhsExpr ASSIGN expr
+assignExpr : id ASSIGN expr
              {
                $$ = newAST(ASSIGN_EXPR, $1, 0, NULL, yylineno);
                appendToChildrenList ($$, $3);
              }
            ;
 
-lhsExpr : id { $$ = $1; }
-        | dotIdExpr { $$ = $1; }
-        ;
+dotAssignExpr : dotIdExpr ASSIGN expr
+             {
+               $$ = newAST(DOT_ASSIGN_EXPR, $1, 0, NULL, yylineno);
+               appendToChildrenList ($$, $3);
+             }
+           ;
 
 constructorExpr : NEW id LPAREN RPAREN
                   {
