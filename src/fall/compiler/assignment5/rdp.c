@@ -379,18 +379,19 @@ ASTree* parseSimpleExpr() {
     se = astGreaterThanExpr;
   }
   if(peek() == ASSIGN){
-    ASTree *lhs;
     if(se->typ == ID_EXPR) {
-      lhs = se->children->data;
+      ASTree *lhs = se->children->data;
       consume(ASSIGN);
       ASTree *astAssignExpr = newAST(ASSIGN_EXPR, lhs, 0, NULL, getLineNo());
       ASTree *rhs = parseExpr();
       appendToChildrenList(astAssignExpr, rhs);
       se = astAssignExpr;
     } else if (se->typ == DOT_ID_EXPR){
-      lhs = se;
+      ASTree *lhsExpr = se->children->data;
+      ASTree *lhsId = se->childrenTail->data;
       consume(ASSIGN);
-      ASTree *astDotAssignExpr = newAST(DOT_ASSIGN_EXPR, lhs, 0, NULL, getLineNo());
+      ASTree *astDotAssignExpr = newAST(DOT_ASSIGN_EXPR, lhsExpr, 0, NULL, getLineNo());
+      appendToChildrenList(astDotAssignExpr, lhsId);
       ASTree *rhs = parseExpr();
       appendToChildrenList(astDotAssignExpr, rhs);
       se = astDotAssignExpr;
@@ -534,12 +535,12 @@ ASTree* parseFactor() {
   return e;
 }
 
-ASTree* parseDotIdExpr(ASTree *e) {
+/*ASTree* parseDotIdExpr(ASTree *e) {
   consume(DOT);
   ASTree *astDotIdExpr = newAST(DOT_ID_EXPR, e, 0, NULL, getLineNo());
   appendToChildrenList(astDotIdExpr, parseId());
   return astDotIdExpr;
-}
+}*/
 
 ASTree* parseNatLiteralExpr() {
   ASTree *astNatLiteralExpr = newAST(NAT_LITERAL_EXPR, NULL, getNatAttribute(), getIdAttribute(), getLineNo());

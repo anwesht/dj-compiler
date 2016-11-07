@@ -250,10 +250,11 @@ assignExpr : id ASSIGN expr
              }
            ;
 
-dotAssignExpr : dotIdExpr ASSIGN expr
+dotAssignExpr : expr DOT id ASSIGN expr
              {
                $$ = newAST(DOT_ASSIGN_EXPR, $1, 0, NULL, yylineno);
                appendToChildrenList ($$, $3);
+               appendToChildrenList ($$, $5);
              }
            ;
 
