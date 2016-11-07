@@ -156,11 +156,8 @@ void setSuperClass(ASTree *superClassDecl, ClassDecl *stEntry) {
   printf("Super Class line number = %d\n", stEntry->superclassLineNumber);
 }
 
-void setupMainBlockST(ASTree *mainVarDeclList) {
-  printf("Setting up main block st\n");
-  /*Allocate memory for mainBlockST */
-  mainBlockST = (VarDecl*)Calloc(numMainBlockLocals, sizeof(VarDecl));
-  ASTList *currentNode = mainVarDeclList->children;
+void setVarDeclList(ASTree *varDeclList, VarDecl *st) {
+  ASTList *currentNode = varDeclList->children;
   ASTList *varDeclNode;
   int pos = 0;
   while(currentNode != NULL && currentNode->data != NULL) {
@@ -169,10 +166,82 @@ void setupMainBlockST(ASTree *mainVarDeclList) {
     varDeclNode = currentNode->data->children;
     setVarDecl(varDeclNode, stEntry);
 
-    mainBlockST[pos] = *stEntry;
+    st[pos] = *stEntry;
     pos += 1;
     currentNode = currentNode->next;
   }
+}
+
+void setMethodDecl(ASTList *methodDeclNode, MethodDecl *stEntry) {
+  stEntry->returnType = getTypeNumber(methodDeclNode->data);
+  stEntry->returnTypeLineNumber = methodDeclNode->data->lineNumber;
+
+  printf("Return Type = %d\n",  stEntry->returnType);
+  printf("Return Type line number = %d\n", stEntry->returnTypeLineNumber);
+
+  methodDeclNode = methodDeclNode->next;
+
+  char *methodName = methodDeclNode->data->idVal;
+  char *copyStr = (char*)Calloc(1, (strlen(methodName) + 1));
+  strcpy(copyStr, methodName);
+  stEntry->methodName = copyStr;
+  stEntry->methodNameLineNumber = methodDeclNode->data->lineNumber;
+
+  printf("Method Name = %s\n",  stEntry->methodName);
+  printf("Method Name line number = %d\n", stEntry->methodNameLineNumber);
+
+  methodDeclNode = methodDeclNode->next;
+
+  stEntry->paramType = getTypeNumber(methodDeclNode->data);
+  stEntry->paramTypeLineNumber = methodDeclNode->data->lineNumber;
+
+  printf("param Type = %d\n",  stEntry->paramType);
+  printf("param Type line number = %d\n", stEntry->paramTypeLineNumber);
+
+  methodDeclNode = methodDeclNode->next;
+
+  char *paramName = methodDeclNode->data->idVal;
+  copyStr = (char*)Calloc(1, (strlen(paramName) + 1));
+  strcpy(copyStr, paramName);
+  stEntry->paramName = copyStr;
+  stEntry->paramNameLineNumber = methodDeclNode->data->lineNumber;
+
+  printf("Param Name = %s\n",  stEntry->paramName);
+  printf("Param Name line number = %d\n", stEntry->paramNameLineNumber);
+
+  methodDeclNode = methodDeclNode->next;
+
+  stEntry->numLocals = getLengthOfList(methodDeclNode->data->children);
+  printf("Number of Locals in Method is : %d\n " , stEntry->numLocals);
+  VarDecl *localST = (VarDecl*)Calloc(stEntry->numLocals, sizeof(VarDecl));
+  setVarDeclList(methodDeclNode->data, localST);
+
+  methodDeclNode = methodDeclNode->next;
+  stEntry->bodyExprs = methodDeclNode->data;
+
+}
+
+void setMethodDeclList(ASTree *methodDeclList, MethodDecl *st) {
+  ASTList *currentNode = methodDeclList->children;
+  ASTList *methodDeclNode;
+  int pos = 0;
+  while(currentNode != NULL && currentNode->data != NULL) {
+    MethodDecl *stEntry = (MethodDecl*)Calloc(1, sizeof(MethodDecl));
+
+    methodDeclNode = currentNode->data->children;
+    setMethodDecl(methodDeclNode, stEntry);
+
+    st[pos] = *stEntry;
+    pos += 1;
+    currentNode = currentNode->next;
+  }
+}
+
+void setupMainBlockST(ASTree *mainVarDeclList) {
+  printf("Setting up main block st\n");
+  /*Allocate memory for mainBlockST */
+  mainBlockST = (VarDecl*)Calloc(numMainBlockLocals, sizeof(VarDecl));
+  setVarDeclList(mainVarDeclList, mainBlockST);
 }
 
 void setupClassesST(ASTree *classDeclList) {
@@ -207,6 +276,15 @@ void setupClassesST(ASTree *classDeclList) {
     classDeclNode = classDeclNode->next;
     stEntry->numVars = getLengthOfList(classDeclNode->data->children);
     printf("Number of fields is : %d\n " , stEntry->numVars);
+    VarDecl *varList = (VarDecl*)Calloc(stEntry->numVars, sizeof(VarDecl));
+    setVarDeclList(classDeclNode->data, varList);
+
+    classDeclNode = classDeclNode->next;
+    stEntry->numMethods = getLengthOfList(classDeclNode->data->children);
+    printf("Number of Methods is : %d\n", stEntry->numMethods);
+
+    MethodDecl *methodList = (MethodDecl*)Calloc(stEntry->numMethods, sizeof(MethodDecl));
+    setMethodDeclList(classDeclNode->data, methodList);
 
     classesST[classNum] = *stEntry;
     classNum += 1;
