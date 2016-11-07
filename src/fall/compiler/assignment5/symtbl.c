@@ -44,8 +44,8 @@ void* Calloc(size_t nitems, size_t size) {
 }
 
 int classNameToNumber(char *className) {
-  int returnNum = -3;
-  for(int i = 0; i <= numClasses; i += 1) {
+  int returnNum = -3, i;
+  for(i = 0; i <= numClasses; i += 1) {
     if(strcmp(className, classNameToNumberMap[i].name) == 0) {
       returnNum = i;
       break;
@@ -249,14 +249,16 @@ void setupClassesST(ASTree *classDeclList) {
 
 
 void printVarList(VarDecl *st, int size) {
-  for(int i = 0; i < size; i += 1) {
+  int i;
+  for(i = 0; i < size; i += 1) {
     printf("    VarType: %d (at line number: %d)\n", st[i].type, st[i].typeLineNumber);
     printf("    VarName: %s (at line number: %d)\n", st[i].varName, st[i].varNameLineNumber);
   }
 }
 
 void printMethodList(MethodDecl *st, int size) {
-  for(int i = 0; i < size; i += 1) {
+  int i;
+  for(i = 0; i < size; i += 1) {
     printf("  returnType => %d (at line number: %d)\n", st[i].returnType, st[i].returnTypeLineNumber);
     printf("  MethodName => %s (at line number: %d)\n", st[i].methodName, st[i].methodNameLineNumber);
     printf("  ParamType => %d (at line number: %d)\n", st[i].paramType, st[i].paramTypeLineNumber);
@@ -267,21 +269,23 @@ void printMethodList(MethodDecl *st, int size) {
 }
 
 void printClassesToNumberMap() {
-  for(int i = 0; i <= numClasses; i += 1) {
+  int i;
+  for(i = 0; i <= numClasses; i += 1) {
     printf("ClassName: %s || ClassNumber = %d", classNameToNumberMap[i].name, i);
     printf("\n");
   }
 }
 
 void printClassesST() {
-  for(int i = 1; i <= numClasses; i += 1) {
+  int i;
+  for(i = 1; i <= numClasses; i += 1) {
     printf("ClassName => %s (line number: %d)\n", classesST[i].className, classesST[i].classNameLineNumber );
     printf("SuperClass => %d (line number: %d)\n", classesST[i].superclass, classesST[i].superclassLineNumber );
     printf("Num Vars => %d \n", classesST[i].numVars );
     printVarList(classesST[i].varList, classesST[i].numVars);
     printf("Num Methods => %d \n", classesST[i].numMethods );
     printMethodList(classesST[i].methodList, classesST[i].numMethods);
-    print("\n\n");
+    printf("\n\n");
   }
 }
 
