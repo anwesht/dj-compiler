@@ -46,13 +46,8 @@ void* Calloc(size_t nitems, size_t size) {
 int classNameToNumber(char *className) {
   int returnNum = -3;
   for(int i = 0; i <= numClasses; i += 1) {
-    printf("To Find: %s\n", className);
-    printf("Current ClassName: %s || ClassNumber = %d\n", classNameToNumberMap[i].name, i);
-    printf("\n");
-
     if(strcmp(className, classNameToNumberMap[i].name) == 0) {
       returnNum = i;
-      printf("returning : %d\n", returnNum);
       break;
     }
   }
@@ -61,24 +56,20 @@ int classNameToNumber(char *className) {
 
 int getLengthOfList(ASTList *currentNode){
   int length = 0;
-  printf("Fields are:  %p" ,currentNode);
 
   while (currentNode != NULL && currentNode->data != NULL) {
     length += 1;
     currentNode = currentNode->next;
   }
-  printf("Length of current list is: %d\n" , length);
   return length;
 }
 
 void setNumMainBlockLocals(ASTList *mainVarDeclList) {
   numMainBlockLocals = getLengthOfList(mainVarDeclList);
-  printf("length of local vars is: %d\n", numMainBlockLocals);
 }
 
 void setNumClasses(ASTList *classDeclList) {
   numClasses = getLengthOfList(classDeclList);
-  printf("Number of classes is: %d\n", numClasses);
 }
 
 void setupClassesToNumberMap(ASTList *currentNode) {
@@ -119,20 +110,14 @@ void setVarDecl(ASTList *varDeclNode, VarDecl *stEntry) {
   stEntry->type = getTypeNumber(varDeclNode->data);
   stEntry->typeLineNumber = varDeclNode->data->lineNumber;
 
-  printf("Var Type = %d\n",  stEntry->type);
-  printf("Var Type line number = %d\n", stEntry->typeLineNumber);
-
   varDeclNode = varDeclNode->next;
 
   char *varName = varDeclNode->data->idVal;
-  printf("setting var decl for : %s\n", varName);
+
   char *copyStr = (char*)Calloc(1, (strlen(varName) + 1));
   strcpy(copyStr, varName);
   stEntry->varName = copyStr;
   stEntry->varNameLineNumber = varDeclNode->data->lineNumber;
-
-  printf("Var Name = %s\n",  stEntry->varName);
-  printf("Var Name line number = %d\n", stEntry->varNameLineNumber);
 }
 
 void setClassName(ASTree *classDecl, ClassDecl *stEntry) {
@@ -141,19 +126,11 @@ void setClassName(ASTree *classDecl, ClassDecl *stEntry) {
   strcpy(copyStr, className);
   stEntry->className = copyStr;
   stEntry->classNameLineNumber = classDecl->lineNumber;
-  printf("Class Name = %s\n",  stEntry->className);
-  printf("Class Name line number = %d\n", stEntry->classNameLineNumber);
 }
 
 void setSuperClass(ASTree *superClassDecl, ClassDecl *stEntry) {
-  printf("SuperClass is : %s\n", superClassDecl->idVal);
   stEntry->superclass = classNameToNumber(superClassDecl->idVal);
-  printf("after setting super class num;\n");
   stEntry->superclassLineNumber = superClassDecl->lineNumber;
-    printf("after setting super class line number;\n");
-
-  printf("Super Class Number = %d\n",  stEntry->superclass);
-  printf("Super Class line number = %d\n", stEntry->superclassLineNumber);
 }
 
 void setVarDeclList(ASTree *varDeclList, VarDecl *st) {
@@ -176,9 +153,6 @@ void setMethodDecl(ASTList *methodDeclNode, MethodDecl *stEntry) {
   stEntry->returnType = getTypeNumber(methodDeclNode->data);
   stEntry->returnTypeLineNumber = methodDeclNode->data->lineNumber;
 
-  printf("Return Type = %d\n",  stEntry->returnType);
-  printf("Return Type line number = %d\n", stEntry->returnTypeLineNumber);
-
   methodDeclNode = methodDeclNode->next;
 
   char *methodName = methodDeclNode->data->idVal;
@@ -187,16 +161,10 @@ void setMethodDecl(ASTList *methodDeclNode, MethodDecl *stEntry) {
   stEntry->methodName = copyStr;
   stEntry->methodNameLineNumber = methodDeclNode->data->lineNumber;
 
-  printf("Method Name = %s\n",  stEntry->methodName);
-  printf("Method Name line number = %d\n", stEntry->methodNameLineNumber);
-
   methodDeclNode = methodDeclNode->next;
 
   stEntry->paramType = getTypeNumber(methodDeclNode->data);
   stEntry->paramTypeLineNumber = methodDeclNode->data->lineNumber;
-
-  printf("param Type = %d\n",  stEntry->paramType);
-  printf("param Type line number = %d\n", stEntry->paramTypeLineNumber);
 
   methodDeclNode = methodDeclNode->next;
 
@@ -206,13 +174,9 @@ void setMethodDecl(ASTList *methodDeclNode, MethodDecl *stEntry) {
   stEntry->paramName = copyStr;
   stEntry->paramNameLineNumber = methodDeclNode->data->lineNumber;
 
-  printf("Param Name = %s\n",  stEntry->paramName);
-  printf("Param Name line number = %d\n", stEntry->paramNameLineNumber);
-
   methodDeclNode = methodDeclNode->next;
 
   stEntry->numLocals = getLengthOfList(methodDeclNode->data->children);
-  printf("Number of Locals in Method is : %d\n " , stEntry->numLocals);
   VarDecl *localST = (VarDecl*)Calloc(stEntry->numLocals, sizeof(VarDecl));
   setVarDeclList(methodDeclNode->data, localST);
   stEntry->localST = localST;
@@ -239,14 +203,12 @@ void setMethodDeclList(ASTree *methodDeclList, MethodDecl *st) {
 }
 
 void setupMainBlockST(ASTree *mainVarDeclList) {
-  printf("Setting up main block st\n");
   /*Allocate memory for mainBlockST */
   mainBlockST = (VarDecl*)Calloc(numMainBlockLocals, sizeof(VarDecl));
   setVarDeclList(mainVarDeclList, mainBlockST);
 }
 
 void setupClassesST(ASTree *classDeclList) {
-  printf("Setting up Classes ST\n");
   /*Allocate memory for classST */
   classesST = (ClassDecl*)Calloc(numClasses+1, sizeof(ClassDecl));
 
@@ -256,34 +218,24 @@ void setupClassesST(ASTree *classDeclList) {
 
   int classNum = 1; //class 0 = Object
   while(currentNode != NULL && currentNode->data != NULL) {
-    printf("Setting up Class Num: %d\n", classNum);
     ClassDecl *stEntry = (ClassDecl*)Calloc(1, sizeof(ClassDecl));
 
-    printf("after calloc class;\n");
     classDeclNode = currentNode->data->children;
-    printf("class decl NOde.\n");
     setClassName(classDeclNode->data, stEntry);
-    printf("after setting class name.\n");
 
     classDeclNode = classDeclNode->next;
-    printf("super class. \n");
 
-    printAST(classDeclNode->data);
-//    setSuperClass(classDeclNode->data, stEntry);
     stEntry->superclass = getTypeNumber(classDeclNode->data);
     stEntry->superclassLineNumber = classDeclNode->data->lineNumber;
 
-
     classDeclNode = classDeclNode->next;
     stEntry->numVars = getLengthOfList(classDeclNode->data->children);
-    printf("Number of fields is : %d\n " , stEntry->numVars);
     VarDecl *varList = (VarDecl*)Calloc(stEntry->numVars, sizeof(VarDecl));
     setVarDeclList(classDeclNode->data, varList);
     stEntry->varList = varList;
 
     classDeclNode = classDeclNode->next;
     stEntry->numMethods = getLengthOfList(classDeclNode->data->children);
-    printf("Number of Methods is : %d\n", stEntry->numMethods);
 
     MethodDecl *methodList = (MethodDecl*)Calloc(stEntry->numMethods, sizeof(MethodDecl));
     setMethodDeclList(classDeclNode->data, methodList);
@@ -329,6 +281,7 @@ void printClassesST() {
     printVarList(classesST[i].varList, classesST[i].numVars);
     printf("Num Methods => %d \n", classesST[i].numMethods );
     printMethodList(classesST[i].methodList, classesST[i].numMethods);
+    print("\n\n");
   }
 }
 
@@ -339,20 +292,14 @@ void setupSymbolTables(ASTree *fullProgramAST) {
   if(fullProgramAST->children->next == NULL) throwError("Program AST has no local vars in main");
 
   ASTree *classDeclList = fullProgramAST->children->data;
-  printf("calling set numClasses\n");
   setNumClasses(classDeclList->children);
-  printf("calling Setup Classes to NUmber map\n");
   setupClassesToNumberMap(classDeclList->children);
 
-  printf("Calling print classes to number map\n");
   printClassesToNumberMap();
-  printf("calling Setup Classes ST\n");
   setupClassesST(classDeclList);
 
   ASTree *mainVarDeclList = fullProgramAST->children->next->data;
-  printf("calling set num main block st\n");
   setNumMainBlockLocals(mainVarDeclList->children);
-  printf("calling setup main block st\n");
   setupMainBlockST(mainVarDeclList);
 
   printClassesST();
