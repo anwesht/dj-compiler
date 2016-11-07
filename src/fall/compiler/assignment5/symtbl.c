@@ -215,6 +215,7 @@ void setMethodDecl(ASTList *methodDeclNode, MethodDecl *stEntry) {
   printf("Number of Locals in Method is : %d\n " , stEntry->numLocals);
   VarDecl *localST = (VarDecl*)Calloc(stEntry->numLocals, sizeof(VarDecl));
   setVarDeclList(methodDeclNode->data, localST);
+  stEntry->localST = localST;
 
   methodDeclNode = methodDeclNode->next;
   stEntry->bodyExprs = methodDeclNode->data;
@@ -278,6 +279,7 @@ void setupClassesST(ASTree *classDeclList) {
     printf("Number of fields is : %d\n " , stEntry->numVars);
     VarDecl *varList = (VarDecl*)Calloc(stEntry->numVars, sizeof(VarDecl));
     setVarDeclList(classDeclNode->data, varList);
+    stEntry->varList = varList;
 
     classDeclNode = classDeclNode->next;
     stEntry->numMethods = getLengthOfList(classDeclNode->data->children);
@@ -285,6 +287,7 @@ void setupClassesST(ASTree *classDeclList) {
 
     MethodDecl *methodList = (MethodDecl*)Calloc(stEntry->numMethods, sizeof(MethodDecl));
     setMethodDeclList(classDeclNode->data, methodList);
+    stEntry->methodList = methodList;
 
     classesST[classNum] = *stEntry;
     classNum += 1;
@@ -293,10 +296,21 @@ void setupClassesST(ASTree *classDeclList) {
 }
 
 
-void printMainBlockST() {
-  for(int i = 0; i < numMainBlockLocals; i += 1) {
-    printf("VarName: %s (at line number: %d)", mainBlockST[i].varName, mainBlockST[i].varNameLineNumber);
-    printf("\n");
+void printVarList(VarDecl *st, int size) {
+  for(int i = 0; i < size; i += 1) {
+    printf("    VarType: %d (at line number: %d)\n", st[i].type, st[i].typeLineNumber);
+    printf("    VarName: %s (at line number: %d)\n", st[i].varName, st[i].varNameLineNumber);
+  }
+}
+
+void printMethodList(MethodDecl *st, int size) {
+  for(int i = 0; i < size; i += 1) {
+    printf("  returnType => %d (at line number: %d)\n", st[i].returnType, st[i].returnTypeLineNumber);
+    printf("  MethodName => %s (at line number: %d)\n", st[i].methodName, st[i].methodNameLineNumber);
+    printf("  ParamType => %d (at line number: %d)\n", st[i].paramType, st[i].paramTypeLineNumber);
+    printf("  ParamName => %s (at line number: %d)\n", st[i].paramName, st[i].paramNameLineNumber);
+    printf("  Num Locals => %d\n", st[i].numLocals);
+    printVarList(st[i].localST, st[i].numLocals);
   }
 }
 
@@ -304,6 +318,17 @@ void printClassesToNumberMap() {
   for(int i = 0; i <= numClasses; i += 1) {
     printf("ClassName: %s || ClassNumber = %d", classNameToNumberMap[i].name, i);
     printf("\n");
+  }
+}
+
+void printClassesST() {
+  for(int i = 1; i <= numClasses; i += 1) {
+    printf("ClassName => %s (line number: %d)\n", classesST[i].className, classesST[i].classNameLineNumber );
+    printf("SuperClass => %d (line number: %d)\n", classesST[i].superclass, classesST[i].superclassLineNumber );
+    printf("Num Vars => %d \n", classesST[i].numVars );
+    printVarList(classesST[i].varList, classesST[i].numVars);
+    printf("Num Methods => %d \n", classesST[i].numMethods );
+    printMethodList(classesST[i].methodList, classesST[i].numMethods);
   }
 }
 
@@ -330,8 +355,8 @@ void setupSymbolTables(ASTree *fullProgramAST) {
   printf("calling setup main block st\n");
   setupMainBlockST(mainVarDeclList);
 
-
-  printMainBlockST();
+  printClassesST();
+  printVarList(mainBlockST, numMainBlockLocals);
 
 }
 
