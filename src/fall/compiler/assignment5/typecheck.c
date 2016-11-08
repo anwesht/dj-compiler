@@ -28,6 +28,9 @@ void validateVarListTypes(VarDecl*, int);
 void validateMethodListTypes(ClassDecl);
 void validateVarNamesInSuperClasses(ClassDecl);
 void validateVarNameInSuperClasses(ClassDecl, char*);
+void validateMethodOverride(ClassDecl, MethodDecl);
+void validateDAG(ClassDecl, int);
+
 
 static void throwError(char *message, int errorLine) {
   printf(RED"\nERROR >>> "NORMAL);
@@ -176,7 +179,7 @@ void validateDAG (ClassDecl classDecl, int distanceToSuper) {
 
 void validateClassVarListTypes(ClassDecl classDecl, VarDecl *varList, int numVars) {
   validateVarListTypes(varList, numVars);
-  /* todo: Check variable names in super class. no overriding fields. */
+  /* Check variable names in super class. no overriding fields. */
   validateVarNamesInSuperClasses(classDecl);    //extra loop through var list.
 }
 
@@ -188,6 +191,12 @@ void validateVarNamesInSuperClasses(ClassDecl classDecl) {
   }
 }
 
+/** Recursively checks for varName in super classes.
+  * We have already verified that the class hierarchy is a DAG, so no infinite loops will occur.
+  * @param superClass => The super class in which to check for varName
+  * @param varName => The variable name in current class to which to look for.
+  * @throws => Variable redefined error.
+  */
 void validateVarNameInSuperClasses(ClassDecl superClass, char *varName) {
   int i;
   VarDecl *varList = superClass.varList;
@@ -260,6 +269,30 @@ void validateMethodListTypes(ClassDecl classDecl) {
         throwError("Variable redefined.", currentMethod.localST[j].varNameLineNumber);
       }
     }
+
+    /* todo: Check for method override */
+    validateMethodOverride(classesST[classDecl.superclass], currentMethod);
+  }
+}
+
+void validateMethodOverride(ClassDecl superClass, MethodDecl currentMethodDecl) {
+  int i;
+  MethodDecl *methodList = superClass.methodList;
+  for(i = 0; i < superClass.numMethods; i += 1) {
+    MethodDecl superMethod = methodList[i];
+    if(strcmp(currentMethodDecl.methodName, superMethod.methodName) == 0) { //method overriden
+      if(superMethod.returnType != currentMethodDecl.returnType) {
+        printf("Overriding method %s in line %d", superMethod.methodName, superMethod.returnTypeLineNumber);
+        throwError("Overridden method has different return type.", currentMethodDecl.returnTypeLineNumber);
+      }
+      if(superMethod.paramType != currentMethodDecl.paramType) {
+        printf("Overriding method %s in line %d", superMethod.methodName, superMethod.paramTypeLineNumber);
+        throwError("Overridden method has different param type.", currentMethodDecl.paramTypeLineNumber);
+      }
+    }
+  }
+  if(superClass.superclass > 0) {   // Look for method override in super
+    validateMethodOverride(classesST[superClass.superclass], currentMethodDecl);
   }
 }
 
