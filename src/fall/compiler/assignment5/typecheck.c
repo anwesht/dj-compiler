@@ -153,36 +153,60 @@ void validateClassTypes(int classNum, ClassDecl classDecl) {
 void validateVarListTypes(ClassDecl classDecl, VarDecl *varList, int numVars) {
   /*VarDecl *varList = classDecl.varList;
   int numVars = classDecl.numVars;*/
-  int i;
+  int i, j;
   for(i = 0; i < numVars; i += 1) {
-    if(varList[i].type < -1) {
-      printf("Variable %s has unknown type.", varList[i].varName);
-      throwError("Invalid Type Error.", varList[i].typeLineNumber);
+    VarDecl currentVar = varList[i];
+    if(currentVar.type < -1) {
+      printf("Variable %s has unknown type.", currentVar.varName);
+      throwError("Invalid Type Error.", currentVar.typeLineNumber);
     }
-    // todo: check unique variable name
+    /* Check unique variable name */
+    for(j = i + 1; j < numVars; j += 1) {
+      if(strcmp(currentVar.varName, varList[j].varName) == 0){
+        printf("Variable %s is already defined in line: %d.", currentVar.varName,
+         currentVar.varNameLineNumber);
+        throwError("Variable redefined.", varList[j].varNameLineNumber);
+      }
+    }
   }
 }
 
 void validateMethodListTypes(ClassDecl classDecl) {
   MethodDecl *methodList = classDecl.methodList;
   int numMethods = classDecl.numMethods;
-  int i;
+  int i, j;
   for(i = 0; i < numMethods; i += 1) {
+    MethodDecl currentMethod = methodList[i];
     /* Check return type */
     if(methodList[i].returnType < -1) {
-      throwError("Invalid Type Error.", methodList[i].returnTypeLineNumber);
-    }
-    /* todo: Check unique method name */
-    
-    /* Check param type */
-    if(methodList[i].paramType < -1) {
-      throwError("Invalid Type Error.", methodList[i].paramTypeLineNumber);
+      throwError("Invalid Type Error.", currentMethod.returnTypeLineNumber);
     }
 
-    /* todo: Check param name and local variable names are unique. */
+    /* Check unique method name */
+    for(j = i + 1; j < numMethods; j += 1) {
+      if(strcmp(currentMethod.methodName, methodList[j].methodName) == 0){
+        printf("Method %s is already defined in line: %d.", currentMethod.methodName,
+         currentMethod.methodNameLineNumber);
+        throwError("Method redefined.", methodList[j].methodNameLineNumber);
+      }
+    }
+
+    /* Check param type */
+    if(currentMethod.paramType < -1) {
+      throwError("Invalid Type Error.", currentMethod.paramTypeLineNumber);
+    }
 
     /* Check types of all locals. */
-    validateVarListTypes(classDecl, methodList[i].localST, methodList[i].numLocals);
+    validateVarListTypes(classDecl, currentMethod.localST, currentMethod.numLocals);
+
+    /* todo: Check param name and local variable names are unique. */
+    for(j = 0; j < currentMethod.numLocals; j += 1) {
+      if(strcmp(currentMethod.paramName, currentMethod.localST[j].varName) == 0){
+        printf("Param name %s is same as variable in line: %d.", currentMethod.paramName,
+         currentMethod.localST[j].varNameLineNumber);
+        throwError("Variable redefined.", currentMethod.localST[j].varNameLineNumber);
+      }
+    }
   }
 }
 
