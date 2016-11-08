@@ -23,7 +23,8 @@ int join(int, int);
 void checkUniqueClassNames(void);
 void validateClasses(void);
 void validateClassTypes(int, ClassDecl);
-void validateVarListTypes(ClassDecl, VarDecl*, int);
+void validateClassVarListTypes(ClassDecl, VarDecl*, int);
+void validateVarListTypes(VarDecl*, int);
 void validateMethodListTypes(ClassDecl);
 
 static void throwError(char *message, int errorLine) {
@@ -51,7 +52,12 @@ void typecheckProgram(){
 
   printf("join 3 and 4: %d\n", join(3, 4));
 
+  /* Validate types of all classes */
   validateClasses();
+
+  /* Validate Main var declarations */
+  validateVarListTypes(mainBlockST, numMainBlockLocals);
+
 }
 
 /** Checks if sub is a subtype of super
@@ -144,13 +150,18 @@ void validateClassTypes(int classNum, ClassDecl classDecl) {
     throwError("Class Extends Itself.", classDecl.superclassLineNumber);
   }
   /* 3. Validate the types of all fields of a class */
-//  validateVarListTypes(classDecl);
-  validateVarListTypes(classDecl, classDecl.varList, classDecl.numVars);
+//  validateClassVarListTypes(classDecl);
+  validateClassVarListTypes(classDecl, classDecl.varList, classDecl.numVars);
   /* 4. Validate all method locals and return types */
   validateMethodListTypes(classDecl);
 }
 
-void validateVarListTypes(ClassDecl classDecl, VarDecl *varList, int numVars) {
+void validateClassVarListTypes(ClassDecl classDecl, VarDecl *varList, int numVars) {
+  validateVarListTypes(varList, numVars);
+  /* todo: Check variable names in super class. no overriding fields. */
+}
+
+void validateVarListTypes(VarDecl *varList, int numVars) {
   /*VarDecl *varList = classDecl.varList;
   int numVars = classDecl.numVars;*/
   int i, j;
@@ -197,9 +208,9 @@ void validateMethodListTypes(ClassDecl classDecl) {
     }
 
     /* Check types of all locals. */
-    validateVarListTypes(classDecl, currentMethod.localST, currentMethod.numLocals);
+    validateClassVarListTypes(classDecl, currentMethod.localST, currentMethod.numLocals);
 
-    /* todo: Check param name and local variable names are unique. */
+    /* Check param name and local variable names are unique. */
     for(j = 0; j < currentMethod.numLocals; j += 1) {
       if(strcmp(currentMethod.paramName, currentMethod.localST[j].varName) == 0){
         printf("Param name %s is same as variable in line: %d.", currentMethod.paramName,
