@@ -26,6 +26,8 @@ void validateClassTypes(int, ClassDecl);
 void validateClassVarListTypes(ClassDecl, VarDecl*, int);
 void validateVarListTypes(VarDecl*, int);
 void validateMethodListTypes(ClassDecl);
+void validateVarNamesInSuperClasses(ClassDecl);
+void validateVarNameInSuperClasses(ClassDecl, char*);
 
 static void throwError(char *message, int errorLine) {
   printf(RED"\nERROR >>> "NORMAL);
@@ -135,8 +137,9 @@ void validateClasses() {
   * Performs the following checks:
     1. Super class types are valid classes.
     2. Class type is not the same as super class type
-    3. Validates the types of all fields of a class
-    4. Validates all method locals and return types
+    3. Validates Class Hierarchy is a DAG
+    4. Validates the types of all fields of a class
+    5. Validates all method locals and return types
   * @param classDecl => The Class to verify.
   * @throws => Invalid Type Error
   */
@@ -149,16 +152,55 @@ void validateClassTypes(int classNum, ClassDecl classDecl) {
   if(classNum == classDecl.superclass) {
     throwError("Class Extends Itself.", classDecl.superclassLineNumber);
   }
-  /* 3. Validate the types of all fields of a class */
-//  validateClassVarListTypes(classDecl);
+  /* 3. Validate DAG */
+  validateDAG(classDecl, 0);
+  /* 4. Validate the types of all fields of a class */
   validateClassVarListTypes(classDecl, classDecl.varList, classDecl.numVars);
-  /* 4. Validate all method locals and return types */
+  /* 5. Validate all method locals and return types */
   validateMethodListTypes(classDecl);
+}
+
+/** Checks for cycles in the class hierarchy
+  * @param classDecl => class to validate the hierarchy
+  * @param distanceToSuper => distance to the super classes
+  * @throws => Cyclic Class Hierarchy Error
+  */
+void validateDAG (ClassDecl classDecl, int distanceToSuper) {
+  if(classDecl.superclass == 0) return;  //Reached the summit. is acyclic.
+  if(distanceToSuper >= numClasses) {
+    throwError("Class Hierarchy is cyclic.", classDecl.classNameLineNumber);
+  }
+  distanceToSuper += 1;
+  validateDAG(classesST[classDecl.superclass], distanceToSuper);
 }
 
 void validateClassVarListTypes(ClassDecl classDecl, VarDecl *varList, int numVars) {
   validateVarListTypes(varList, numVars);
   /* todo: Check variable names in super class. no overriding fields. */
+  validateVarNamesInSuperClasses(classDecl);    //extra loop through var list.
+}
+
+void validateVarNamesInSuperClasses(ClassDecl classDecl) {
+  int i;
+  VarDecl *varList = classDecl.varList;
+  for(i = 0; i < classDecl.numVars; i += 1) {
+    validateVarNameInSuperClasses(classesST[classDecl.superclass], varList[i].varName);
+  }
+}
+
+void validateVarNameInSuperClasses(ClassDecl superClass, char *varName) {
+  int i;
+  VarDecl *varList = superClass.varList;
+  for(i = 0; i < superClass.numVars; i += 1) {
+    if(strcmp(varName, varList[i].varName) == 0){
+      printf("Variable %s is already defined in Super class in line: %d.", varName,
+       varList[i].varNameLineNumber);
+      throwError("Variable redefined.", varList[i].varNameLineNumber);
+    }
+  }
+  if(superClass.superclass > 0) {   // Look for the variable in all classes
+    validateVarNameInSuperClasses(classesST[superClass.superclass], varName);
+  }
 }
 
 void validateVarListTypes(VarDecl *varList, int numVars) {
