@@ -20,7 +20,11 @@ typedef enum
 
 int isSubtype(int, int);
 int join(int, int);
-void checkUniqueClassNames();
+void checkUniqueClassNames(void);
+void validateClasses(void);
+void validateClassTypes(int, ClassDecl);
+void validateVarListTypes(ClassDecl, VarDecl*, int);
+void validateMethodListTypes(ClassDecl);
 
 static void throwError(char *message, int errorLine) {
   printf(RED"\nERROR >>> "NORMAL);
@@ -47,7 +51,7 @@ void typecheckProgram(){
 
   printf("join 3 and 4: %d\n", join(3, 4));
 
-  checkUniqueClassNames();
+  validateClasses();
 }
 
 /** Checks if sub is a subtype of super
@@ -107,16 +111,78 @@ int join(int t1, int t2) {
 /** Checks for uniqueness of all defined classes
   * @throws => Class redefined error.
   */
-void checkUniqueClassNames() {
+void validateClasses() {
   int i, j;
   for(i = 1; i <= numClasses; i += 1) {
-    char *currentClass = classesST[i].className;
+    ClassDecl currentClass = classesST[i];
     for(j = i + 1; j <= numClasses; j += 1) {
-      if(strcmp(currentClass, classesST[j].className) == 0){
-        printf("Class %s is already defined in line: %d.", classesST[i].className, classesST[i].classNameLineNumber);
+      if(strcmp(currentClass.className, classesST[j].className) == 0){
+        printf("Class %s is already defined in line: %d.", currentClass.className, currentClass.classNameLineNumber);
         throwError("Class redefined.", classesST[j].classNameLineNumber);
       }
     }
+    validateClassTypes(i, currentClass);
+  }
+}
+
+/** Checks if all the 'types' used within a class is valid.
+  * Performs the following checks:
+    1. Super class types are valid classes.
+    2. Class type is not the same as super class type
+    3. Validates the types of all fields of a class
+    4. Validates all method locals and return types
+  * @param classDecl => The Class to verify.
+  * @throws => Invalid Type Error
+  */
+void validateClassTypes(int classNum, ClassDecl classDecl) {
+  /* 1. Validate Super class type */
+  if(classDecl.superclass < 0) {
+    throwError("Invalid Type Error", classDecl.superclassLineNumber);
+  }
+  /* 2. Validate class doesn't extend itself */
+  if(classNum == classDecl.superclass) {
+    throwError("Class Extends Itself.", classDecl.superclassLineNumber);
+  }
+  /* 3. Validate the types of all fields of a class */
+//  validateVarListTypes(classDecl);
+  validateVarListTypes(classDecl, classDecl.varList, classDecl.numVars);
+  /* 4. Validate all method locals and return types */
+  validateMethodListTypes(classDecl);
+}
+
+void validateVarListTypes(ClassDecl classDecl, VarDecl *varList, int numVars) {
+  /*VarDecl *varList = classDecl.varList;
+  int numVars = classDecl.numVars;*/
+  int i;
+  for(i = 0; i < numVars; i += 1) {
+    if(varList[i].type < -1) {
+      printf("Variable %s has unknown type.", varList[i].varName);
+      throwError("Invalid Type Error.", varList[i].typeLineNumber);
+    }
+    // todo: check unique variable name
+  }
+}
+
+void validateMethodListTypes(ClassDecl classDecl) {
+  MethodDecl *methodList = classDecl.methodList;
+  int numMethods = classDecl.numMethods;
+  int i;
+  for(i = 0; i < numMethods; i += 1) {
+    /* Check return type */
+    if(methodList[i].returnType < -1) {
+      throwError("Invalid Type Error.", methodList[i].returnTypeLineNumber);
+    }
+    /* todo: Check unique method name */
+    
+    /* Check param type */
+    if(methodList[i].paramType < -1) {
+      throwError("Invalid Type Error.", methodList[i].paramTypeLineNumber);
+    }
+
+    /* todo: Check param name and local variable names are unique. */
+
+    /* Check types of all locals. */
+    validateVarListTypes(classDecl, methodList[i].localST, methodList[i].numLocals);
   }
 }
 
