@@ -9,6 +9,7 @@
 #include "lexer.h"
 #include "ast.h"
 #include "symtbl.h"
+#include "typecheck.h"
 
 static TokenType token;     /* holds current token */
 static TokenType nextToken; /* holds the lookahead token */
@@ -593,7 +594,7 @@ int main( int argc, char **argv )
   printAST(pgmAST);
 
   setupSymbolTables(pgmAST);
-
+  typecheckProgram();
   /** Close the file */
   fclose(fp);
 

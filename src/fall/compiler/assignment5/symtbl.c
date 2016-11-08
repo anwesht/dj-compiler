@@ -295,6 +295,12 @@ void setupSymbolTables(ASTree *fullProgramAST) {
   if(fullProgramAST->children->data == NULL) throwError("Program AST has no classes");
   if(fullProgramAST->children->next == NULL) throwError("Program AST has no local vars in main");
 
+  /* Set global variable entire wholeProgram */
+  wholeProgram = fullProgramAST;
+
+  /* Set global varialbe mainExprs */
+  mainExprs = fullProgramAST->children->next->next->data;
+
   ASTree *classDeclList = fullProgramAST->children->data;
   setNumClasses(classDeclList->children);
   setupClassesToNumberMap(classDeclList->children);
