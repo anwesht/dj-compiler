@@ -37,6 +37,9 @@ int getTypeOfVarInLocalsST(VarDecl*, int, char*);
 int getTypeOfVarInClass(ClassDecl, char*);
 int typeId(ASTree*, int, int);
 int typeNewExpr(ASTree*);
+int typeEqualityExpr(ASTree*, int, int);
+
+//todo: Set the staticClassNum and staticMemberNum in ast!!!
 
 static void throwError(char *message, int errorLine) {
   printf(RED"\nERROR >>> "NORMAL);
@@ -333,16 +336,20 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case NULL_EXPR:
       return -2;
 
-    case ASSIGN_EXPR:
-      return typeAssignExpr(t, classContainingExpr, methodContainingExpr);
+    case AST_ID:
+      return typeId(t, classContainingExpr, methodContainingExpr);
 
     case ID_EXPR:
     {
       ASTree *astId = t->children->data;
       return typeExpr(astId, classContainingExpr, methodContainingExpr);
     }
-    case AST_ID:
-      return typeId(t, classContainingExpr, methodContainingExpr);
+
+    case ASSIGN_EXPR:
+      return typeAssignExpr(t, classContainingExpr, methodContainingExpr);
+
+    case EQUALITY_EXPR:
+      return typeEqualityExpr(t, classContainingExpr, methodContainingExpr);
 
     default:
       if(t->idVal == NULL) {
@@ -354,15 +361,40 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   }
 }
 
+/** Type checks the provided expressions list.
+  * @param t=> AST of the expression list.
+  * @param classContainingExprs => class number of the containing class
+  * @param methodContainingExprs => method number of the containing method
+  * @returns => The type of the last expression in the expression list.
+  */
 int typeExprs(ASTree *t, int classContainingExprs, int methodContainingExprs) {
   ASTList *currentNode = t->children;
   while(currentNode != NULL && currentNode->data != NULL) {
     typeExpr(currentNode->data, classContainingExprs, methodContainingExprs);
     currentNode = currentNode->next;
   }
+  //todo: return last expression type.
   return -1;
 }
 
+int typeEqualityExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *equalityNode = t->children;
+  int typeLeftOperand = typeExpr(equalityNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of Left operand = %d\n", typeLeftOperand);
+  equalityNode = equalityNode->next;
+  int typeRightOperand = typeExpr(equalityNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of Right OPerand = %d\n", typeRightOperand);
+  if(!isSubtype(typeLeftOperand, typeRightOperand) || !isSubtype(typeRightOperand, typeLeftOperand)) {
+    throwError("Error is Equality expression. Type mismatch.", equalityNode->data->lineNumber);
+  }
+  return -1;
+}
+
+/** Type checks New Expression
+  * @param astClassName => The AST representing the class name of new expression.
+  * @returns => The type number of a valid new expression.
+  * @throws => Invalid Type error.
+  */
 int typeNewExpr(ASTree *astClassName) {
   int typeOfNew;
   if(astClassName->typ == OBJ_TYPE) {
@@ -377,6 +409,14 @@ int typeNewExpr(ASTree *astClassName) {
   return typeOfNew;
 }
 
+/** Type check AST_ID. Looks for the variable name either in main locals
+    or method locals and class and super class fields.
+  * @param t=> AST of the ID.
+  * @param classContainingExpr => class number of the containing class
+  * @param methodContainingExpr => method number of the containing method
+  * @returns => The type of the ID if valid.
+  * @throws => Implicit Declaration of variable error
+  */
 int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   char *varName = t->idVal;
   if(classContainingExpr == 0) {
@@ -414,6 +454,11 @@ int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   }
 }
 
+/** Checks for the variable name in fields of the current class and its superclasses recursively.
+  * @param currentClass => The symbol table of the class in which to look.\
+  * @param varName => The variable name to look for
+  * @returns => The type of varName OR -3(which is an illegal type in DJ) if not found.
+  */
 int getTypeOfVarInClass(ClassDecl currentClass, char *varName) {
   int i;
   VarDecl *varList = currentClass.varList;
@@ -428,6 +473,12 @@ int getTypeOfVarInClass(ClassDecl currentClass, char *varName) {
   return -3;
 }
 
+/** Checks for the variable name in the provided VarDecl list (Symbol table)
+  * @param varList => The symbol table in which to search for varName
+  * @numVars => The number of variables in the varList
+  * @param varName => The variable to type check
+  * @returns => the type of varName OR -3(which is an illegal type in DJ) if not found.
+  */
 int getTypeOfVarInLocalsST(VarDecl *varList, int numVars, char *varName) {
   int i;
   for(i = 0; i < numVars; i += 1) {
@@ -439,6 +490,13 @@ int getTypeOfVarInLocalsST(VarDecl *varList, int numVars, char *varName) {
   return -3;
 }
 
+/** Type check assignment expression
+  * @param t => AST for assignment expression
+  * @param classContainingExpr => class number of the containing class
+  * @param methodContainingExpr => method number of the containing method
+  * @returns => type number of the assignment expr = the type of lhs expression
+  * @throws => RHS is not a sub-type error
+  */
 int typeAssignExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *assignNode = t->children;
   int typeLhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
