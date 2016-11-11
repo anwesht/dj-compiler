@@ -20,17 +20,23 @@ typedef enum
 
 int isSubtype(int, int);
 int join(int, int);
-void checkUniqueClassNames(void);
 void validateClasses(void);
 void validateClassTypes(int, ClassDecl);
 void validateClassVarListTypes(ClassDecl, VarDecl*, int);
 void validateVarListTypes(VarDecl*, int);
-void validateMethodListTypes(ClassDecl);
+void validateMethodListTypes(int, ClassDecl);
 void validateVarNamesInSuperClasses(ClassDecl);
 void validateVarNameInSuperClasses(ClassDecl, char*);
 void validateMethodOverride(ClassDecl, MethodDecl);
 void validateDAG(ClassDecl, int);
 
+int typeExpr(ASTree *t, int, int);
+int typeExprs(ASTree *t, int, int);
+int typeAssignExpr(ASTree*, int, int);
+int getTypeOfVarInLocalsST(VarDecl*, int, char*);
+int getTypeOfVarInClass(ClassDecl, char*);
+int typeId(ASTree*, int, int);
+int typeNewExpr(ASTree*);
 
 static void throwError(char *message, int errorLine) {
   printf(RED"\nERROR >>> "NORMAL);
@@ -63,6 +69,8 @@ void typecheckProgram(){
   /* Validate Main var declarations */
   validateVarListTypes(mainBlockST, numMainBlockLocals);
 
+  /* Validate Main Expr List */
+  typeExprs(mainExprs, -1, -1);
 }
 
 /** Checks if sub is a subtype of super
@@ -73,7 +81,7 @@ void typecheckProgram(){
 int isSubtype(int sub, int super) {
   bool isSubtype = false;
   if(sub <= -3) return isSubtype;
-
+  if(sub == super) return true;
   switch(sub) {
     case -2:
       if((super == -2 || 0) || super >= 0 ) {
@@ -160,7 +168,7 @@ void validateClassTypes(int classNum, ClassDecl classDecl) {
   /* 4. Validate the types of all fields of a class */
   validateClassVarListTypes(classDecl, classDecl.varList, classDecl.numVars);
   /* 5. Validate all method locals and return types */
-  validateMethodListTypes(classDecl);
+  validateMethodListTypes(classNum, classDecl);
 }
 
 /** Checks for cycles in the class hierarchy
@@ -233,7 +241,7 @@ void validateVarListTypes(VarDecl *varList, int numVars) {
   }
 }
 
-void validateMethodListTypes(ClassDecl classDecl) {
+void validateMethodListTypes(int classNum, ClassDecl classDecl) {
   MethodDecl *methodList = classDecl.methodList;
   int numMethods = classDecl.numMethods;
   int i, j;
@@ -270,8 +278,11 @@ void validateMethodListTypes(ClassDecl classDecl) {
       }
     }
 
-    /* todo: Check for method override */
+    /* Check for method override */
     validateMethodOverride(classesST[classDecl.superclass], currentMethod);
+
+    /* Validate Method Expr List */
+    typeExprs(currentMethod.bodyExprs, classNum, i);
   }
 }
 
@@ -296,7 +307,151 @@ void validateMethodOverride(ClassDecl superClass, MethodDecl currentMethodDecl) 
   }
 }
 
-int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr);
+int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  if(t == NULL) throwError("Nothing to type check.", -1);
+  switch(t->typ) {
+    case NAT_LITERAL_EXPR:
+      printf("Type NatLiteral Expr: %d | natVal = %d | in line number: %u\n", t->typ, t->natVal, t->lineNumber );
+      return -1;
 
-int typeExprs(ASTree *t, int classContainingExprs, int methodContainingExprs);
+    case THIS_EXPR:
+      printf("Type This Expr: classContainingExpr: %d | natVal = %d | in line number: %u\n", classContainingExpr, t->natVal, t->lineNumber );
+      if(classContainingExpr <= 0) {
+        throwError("Use of this is not allowed here.", t->lineNumber);
+      }
+      return classContainingExpr;
+
+    case NEW_EXPR:
+      return typeNewExpr(t->children->data);
+
+    case READ_EXPR:
+      return -1;
+
+    case PRINT_EXPR:
+      return -1;
+
+    case NULL_EXPR:
+      return -2;
+
+    case ASSIGN_EXPR:
+      return typeAssignExpr(t, classContainingExpr, methodContainingExpr);
+
+    case ID_EXPR:
+    {
+      ASTree *astId = t->children->data;
+      return typeExpr(astId, classContainingExpr, methodContainingExpr);
+    }
+    case AST_ID:
+      return typeId(t, classContainingExpr, methodContainingExpr);
+
+    default:
+      if(t->idVal == NULL) {
+        printf("Type Checking: %d | natVal = %d | in line number: %u\n", t->typ, t->natVal, t->lineNumber );
+      } else {
+        printf("Type Checking: %d | idVal = %s | in line number: %u\n", t->typ, t->idVal, t->lineNumber );
+      }
+      return 0;
+  }
+}
+
+int typeExprs(ASTree *t, int classContainingExprs, int methodContainingExprs) {
+  ASTList *currentNode = t->children;
+  while(currentNode != NULL && currentNode->data != NULL) {
+    typeExpr(currentNode->data, classContainingExprs, methodContainingExprs);
+    currentNode = currentNode->next;
+  }
+  return -1;
+}
+
+int typeNewExpr(ASTree *astClassName) {
+  int typeOfNew;
+  if(astClassName->typ == OBJ_TYPE) {
+    typeOfNew = 0;
+  } else {
+    typeOfNew = classNameToNumber(astClassName->idVal);
+  }
+  if(typeOfNew == -3) {
+    throwError("Invalid Type for new expression", astClassName->lineNumber);
+  }
+  printf("Type New Expr: %d | id = %s | in line number: %u\n", typeOfNew, astClassName->idVal, astClassName->lineNumber );
+  return typeOfNew;
+}
+
+int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  char *varName = t->idVal;
+  if(classContainingExpr == 0) {
+    throwError("Internal Compiler error. Class Containing Expr cannot be 0", t->lineNumber);
+  }
+
+  int typeOfId;
+  if(classContainingExpr < 0) {
+    /* Find varName in main locals*/
+    typeOfId = getTypeOfVarInLocalsST(mainBlockST, numMainBlockLocals, varName);
+    if(typeOfId == -3) {
+      printf("Implicit declaration of variable '%s' in Main.", varName);
+      throwError("Implicit Declaration of variable is not allowed in DJ.", t->lineNumber);
+    }
+    return typeOfId;
+  } else {
+    MethodDecl currentMethod = classesST[classContainingExpr].methodList[methodContainingExpr];
+    /* Check if varName is param */
+    if(strcmp(varName, currentMethod.paramName) == 0){
+      typeOfId = currentMethod.paramType;
+      return typeOfId;
+    }
+    /* Find varName in method locals */
+    typeOfId = getTypeOfVarInLocalsST(currentMethod.localST, currentMethod.numLocals, varName);
+    if(typeOfId > -3){
+      return typeOfId;
+    }
+    /* Find varName in class/super class fields */
+    typeOfId = getTypeOfVarInClass(classesST[classContainingExpr], varName);
+    if(typeOfId == -3) {
+      printf("Implicit declaration of variable '%s' in Method.", varName);
+      throwError("Implicit Declaration of variable is not allowed in DJ.", t->lineNumber);
+    }
+    return typeOfId;
+  }
+}
+
+int getTypeOfVarInClass(ClassDecl currentClass, char *varName) {
+  int i;
+  VarDecl *varList = currentClass.varList;
+  for(i = 0; i < currentClass.numVars; i += 1) {
+    if(strcmp(varName, varList[i].varName) == 0){
+      return varList[i].type;
+    }
+  }
+  if(currentClass.superclass > 0) {   // Look for the variable in all classes
+    return getTypeOfVarInClass(classesST[currentClass.superclass], varName);
+  }
+  return -3;
+}
+
+int getTypeOfVarInLocalsST(VarDecl *varList, int numVars, char *varName) {
+  int i;
+  for(i = 0; i < numVars; i += 1) {
+    if(strcmp(varName, varList[i].varName) == 0){
+      return varList[i].type;
+    }
+  }
+  printf("%s Variable not found in locals.\n", varName);
+  return -3;
+}
+
+int typeAssignExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *assignNode = t->children;
+  int typeLhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of LHS = %d\n", typeLhs);
+  assignNode = assignNode->next;
+  int typeRhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of RHS = %d\n", typeRhs);
+  printf("%d", isSubtype(typeRhs, typeLhs));
+  if(!isSubtype(typeRhs, typeLhs)) {
+    throwError("Error is Assignment. RHS is not a sub-type of LHS.", assignNode->data->lineNumber);
+  }
+  printf("type of assignment is: %d\n", typeLhs);
+  return typeLhs;
+}
+
 
