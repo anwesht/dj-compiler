@@ -46,6 +46,8 @@ int typeMethodCallExpr(ASTree*, int, int);
 int typeDotMethodCallExpr(ASTree*, int, int);
 int typeIfThenElseExpr(ASTree*, int, int);
 int typeForExpr(ASTree*, int, int);
+int typePrintExpr(ASTree*, int, int);
+int typeGreaterExpr(ASTree*, int, int);
 
 MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
 
@@ -101,7 +103,8 @@ int isSubtype(int sub, int super) {
   if(sub == super) return true;
   switch(sub) {
     case -2:
-      if((super == -2 || 0) || super >= 0 ) {
+//      if((super == -2 || 0) || super >= 0 ) {
+      if(super >= -2 && super != -1  ) {
         isSubtype = true;
       }
       break;
@@ -463,7 +466,7 @@ int typeCompExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   compNode = compNode->next;
   int typeRightOperand = typeExpr(compNode->data, classContainingExpr, methodContainingExpr);
   printf("The type of Right OPerand = %d\n", typeRightOperand);
-  if(!isSubtype(typeLeftOperand, typeRightOperand) || !isSubtype(typeRightOperand, typeLeftOperand)) {
+  if(!isSubtype(typeLeftOperand, typeRightOperand) && !isSubtype(typeRightOperand, typeLeftOperand)) {
     throwError("Type mismatch.", compNode->data->lineNumber);
   }
   return -1;
@@ -667,7 +670,8 @@ int typeMethodCallExpr(ASTree *t, int classContainingExpr, int methodContainingE
   printf("Type of Param is : %d\n", typeOfParam);
   printf("Expected Type of Param is : %d\n", methodDecl.paramType);
 
-  if(methodDecl.paramType != typeOfParam) {
+//  if(methodDecl.paramType != typeOfParam) {
+  if(!isSubtype(typeOfParam, methodDecl.paramType)) {
     throwError("Argument type doesn't match declared parameter type.", methodCallNode->data->lineNumber);
   }
   return methodDecl.returnType;
@@ -692,7 +696,7 @@ int typeDotMethodCallExpr(ASTree *t, int classContainingExpr, int methodContaini
   printf("Type of Param is : %d\n", typeOfParam);
   printf("Expected Type of Param is : %d\n", methodDecl.paramType);
 
-  if(methodDecl.paramType != typeOfParam) {
+  if(!isSubtype(typeOfParam, methodDecl.paramType)) {
     throwError("Argument type doesn't match declared parameter type.", dotMethodNode->data->lineNumber);
   }
   return methodDecl.returnType;
@@ -768,6 +772,7 @@ int typePrintExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) 
   if(typeOfExpr != -1) {
     throwError("Non Nat type in printNat.", printNatNode->data->lineNumber);
   }
+  return -1;
 }
 
 int typeGreaterExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
@@ -787,6 +792,3 @@ int typeGreaterExpr(ASTree *t, int classContainingExpr, int methodContainingExpr
   }
   return -1;
 }
-
-
-
