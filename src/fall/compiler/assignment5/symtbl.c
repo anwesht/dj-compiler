@@ -305,15 +305,15 @@ void setupSymbolTables(ASTree *fullProgramAST) {
   setNumClasses(classDeclList->children);
   setupClassesToNumberMap(classDeclList->children);
 
-  printClassesToNumberMap();
+//  printClassesToNumberMap();
   setupClassesST(classDeclList);
 
   ASTree *mainVarDeclList = fullProgramAST->children->next->data;
   setNumMainBlockLocals(mainVarDeclList->children);
   setupMainBlockST(mainVarDeclList);
 
-  printClassesST();
-  printVarList(mainBlockST, numMainBlockLocals);
+//  printClassesST();
+//  printVarList(mainBlockST, numMainBlockLocals);
 
 }
 
