@@ -37,7 +37,9 @@ int getTypeOfVarInLocalsST(VarDecl*, int, char*);
 int getTypeOfVarInClass(ClassDecl, char*);
 int typeId(ASTree*, int, int);
 int typeNewExpr(ASTree*);
-int typeEqualityExpr(ASTree*, int, int);
+int typeCompExpr(ASTree*, int, int);
+int typeBinaryExpr(ASTree*, int, int);
+int typeDotIdExpr(ASTree*, int, int);
 
 //todo: Set the staticClassNum and staticMemberNum in ast!!!
 
@@ -345,11 +347,21 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
       return typeExpr(astId, classContainingExpr, methodContainingExpr);
     }
 
+    case DOT_ID_EXPR:
+      return typeDotIdExpr(t, classContainingExpr, methodContainingExpr);
+
     case ASSIGN_EXPR:
       return typeAssignExpr(t, classContainingExpr, methodContainingExpr);
 
     case EQUALITY_EXPR:
-      return typeEqualityExpr(t, classContainingExpr, methodContainingExpr);
+    case GREATER_THAN_EXPR:
+    case OR_EXPR:
+      return typeCompExpr(t, classContainingExpr, methodContainingExpr);
+
+    case PLUS_EXPR:
+    case MINUS_EXPR:
+    case TIMES_EXPR:
+      return typeBinaryExpr(t, classContainingExpr, methodContainingExpr);
 
     default:
       if(t->idVal == NULL) {
@@ -377,17 +389,58 @@ int typeExprs(ASTree *t, int classContainingExprs, int methodContainingExprs) {
   return -1;
 }
 
-int typeEqualityExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
-  ASTList *equalityNode = t->children;
-  int typeLeftOperand = typeExpr(equalityNode->data, classContainingExpr, methodContainingExpr);
+int typeDotIdExpr(ASTree *t, int classContainingExpr, int methodContainingExpr){
+  ASTList *dotIdNode = t->children;
+  int typeOfExpr = typeExpr(dotIdNode->data, classContainingExpr, methodContainingExpr);
+
+  if(typeOfExpr < 0){
+    throwError("Dot operation is not allowed for this type.", t->lineNumber);
+  }
+
+  dotIdNode = dotIdNode->next;
+  char *fieldName = dotIdNode->data->idVal;
+  ClassDecl currentClass;
+  printf("dotit:\n");
+  printf("dotit: %s\n", dotIdNode->data->idVal);
+
+  // Only Checking for field names if the type is not Object. Object can have any dynamic type, so not checking fields
+  typeOfExpr = getTypeOfVarInClass(classesST[typeOfExpr], fieldName);
+  /*if(typeOfExpr == -3) {
+    printf("Field name '%s' not defined.", dotIdNode->data->idVal);
+    throwError("Undefined Field Name.", t->lineNumber );
+  }*/
+
+  if(typeOfExpr == -3) {
+    printf("Field name '%s' not defined.", fieldName);
+    throwError("Undefined Field Name.", t->lineNumber );
+  }
+  return typeOfExpr;
+}
+
+int typeCompExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *compNode = t->children;
+  int typeLeftOperand = typeExpr(compNode->data, classContainingExpr, methodContainingExpr);
   printf("The type of Left operand = %d\n", typeLeftOperand);
-  equalityNode = equalityNode->next;
-  int typeRightOperand = typeExpr(equalityNode->data, classContainingExpr, methodContainingExpr);
+  compNode = compNode->next;
+  int typeRightOperand = typeExpr(compNode->data, classContainingExpr, methodContainingExpr);
   printf("The type of Right OPerand = %d\n", typeRightOperand);
   if(!isSubtype(typeLeftOperand, typeRightOperand) || !isSubtype(typeRightOperand, typeLeftOperand)) {
-    throwError("Error is Equality expression. Type mismatch.", equalityNode->data->lineNumber);
+    throwError("Type mismatch.", compNode->data->lineNumber);
   }
   return -1;
+}
+
+int typeBinaryExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *binaryNode = t->children;
+  int typeLeftOperand = typeExpr(binaryNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of Left operand = %d\n", typeLeftOperand);
+  binaryNode = binaryNode->next;
+  int typeRightOperand = typeExpr(binaryNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of Right OPerand = %d\n", typeRightOperand);
+  if(!isSubtype(typeLeftOperand, typeRightOperand) || !isSubtype(typeRightOperand, typeLeftOperand)) {
+    throwError("Error in Binary expression. Type mismatch.", binaryNode->data->lineNumber);
+  }
+  return join(typeLeftOperand, typeRightOperand);
 }
 
 /** Type checks New Expression
