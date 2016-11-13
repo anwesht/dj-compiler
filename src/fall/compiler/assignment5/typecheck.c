@@ -299,7 +299,11 @@ void validateMethodListTypes(int classNum, ClassDecl classDecl) {
     validateMethodOverride(classesST[classDecl.superclass], currentMethod);
 
     /* Validate Method Expr List */
-    typeExprs(currentMethod.bodyExprs, classNum, i);
+    int typeOfBodyExprs = typeExprs(currentMethod.bodyExprs, classNum, i);
+    if(!isSubtype(typeOfBodyExprs, currentMethod.returnType)) {
+      throwError("Incompatible return expression.",
+        currentMethod.bodyExprs->childrenTail->data->lineNumber);
+    }
   }
 }
 
