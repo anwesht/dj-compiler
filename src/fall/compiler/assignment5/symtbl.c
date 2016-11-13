@@ -41,7 +41,7 @@ void* Calloc(size_t nitems, size_t size) {
 
 int classNameToNumber(char *className) {
   int returnNum = -3, i;
-  for(i = 0; i <= numClasses; i += 1) {
+  for(i = 0; i < numClasses; i += 1) {
     if(strcmp(className, classNameToNumberMap[i].name) == 0) {
       returnNum = i;
       break;
@@ -66,6 +66,7 @@ void setNumMainBlockLocals(ASTList *mainVarDeclList) {
 
 void setNumClasses(ASTList *classDeclList) {
   numClasses = getLengthOfList(classDeclList);
+  numClasses += 1;  // For Object Class.
 }
 
 void setupClassesToNumberMap(ASTList *currentNode) {
@@ -266,7 +267,7 @@ void printMethodList(MethodDecl *st, int size) {
 
 void printClassesToNumberMap() {
   int i;
-  for(i = 0; i <= numClasses; i += 1) {
+  for(i = 0; i < numClasses; i += 1) {
     printf("ClassName: %s || ClassNumber = %d", classNameToNumberMap[i].name, i);
     printf("\n");
   }
@@ -274,7 +275,7 @@ void printClassesToNumberMap() {
 
 void printClassesST() {
   int i;
-  for(i = 1; i <= numClasses; i += 1) {
+  for(i = 1; i < numClasses; i += 1) {
     printf("ClassName => %s (line number: %d)\n", classesST[i].className, classesST[i].classNameLineNumber );
     printf("SuperClass => %d (line number: %d)\n", classesST[i].superclass, classesST[i].superclassLineNumber );
     printf("Num Vars => %d \n", classesST[i].numVars );

@@ -56,7 +56,6 @@ MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
 static void _throwError(char *message, int errorLine) {
   printf(RED"\nSemantic analysis error on line %d >>> "NORMAL, errorLine);
   printf("\n  %s\n", message);
-//  printf("  Error in Line Number: %d", errorLine);
   printf("\n");
 }
 
@@ -135,9 +134,9 @@ int join(int t1, int t2) {
   */
 void validateClasses() {
   int i, j;
-  for(i = 1; i <= numClasses; i += 1) {
+  for(i = 1; i < numClasses; i += 1) {
     ClassDecl currentClass = classesST[i];
-    for(j = i + 1; j <= numClasses; j += 1) {
+    for(j = i + 1; j < numClasses; j += 1) {
       if(strcmp(currentClass.className, classesST[j].className) == 0){
         printf("Class %s is already defined in line: %d.", currentClass.className, currentClass.classNameLineNumber);
         throwError("Class redefined.", classesST[j].classNameLineNumber);
