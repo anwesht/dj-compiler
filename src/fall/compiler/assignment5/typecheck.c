@@ -54,9 +54,9 @@ MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
 //todo: Set the staticClassNum and staticMemberNum in ast!!!
 
 static void _throwError(char *message, int errorLine) {
-  printf(RED"\nERROR >>> "NORMAL);
-  printf("%s\n", message);
-  printf("  Error in Line Number: %d", errorLine);
+  printf(RED"\nSemantic analysis error on line %d >>> "NORMAL, errorLine);
+  printf("\n  %s\n", message);
+//  printf("  Error in Line Number: %d", errorLine);
   printf("\n");
 }
 
@@ -316,6 +316,10 @@ void validateMethodOverride(ClassDecl superClass, MethodDecl currentMethodDecl) 
 
 int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   if(t == NULL) throwError("Nothing to type check.", -1);
+  /* Setting the static class number and static member number here. */
+  t->staticClassNum = classContainingExpr;
+  t->staticMemberNum = methodContainingExpr;
+
   switch(t->typ) {
     case NAT_LITERAL_EXPR:
       return -1;
