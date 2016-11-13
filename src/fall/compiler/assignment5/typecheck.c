@@ -11,7 +11,6 @@
 #define RED   "\x1B[31m"
 #define NORMAL "\x1B[0m"
 
-
 typedef enum
 {
   false,
@@ -51,8 +50,6 @@ int typeGreaterExpr(ASTree*, int, int);
 
 MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
 
-//todo: Set the staticClassNum and staticMemberNum in ast!!!
-
 static void _throwError(char *message, int errorLine) {
   printf(RED"\nSemantic analysis error on line %d >>> "NORMAL, errorLine);
   printf("\n  %s\n", message);
@@ -64,6 +61,7 @@ static void throwError(char *message, int errorLine) {
   exit(-1);
 }
 
+/** Type check the entire program */
 void typecheckProgram(){
   /* Validate types of all classes */
   validateClasses();
@@ -223,8 +221,6 @@ void validateVarNameInSuperClasses(ClassDecl superClass, char *varName) {
 }
 
 void validateVarListTypes(VarDecl *varList, int numVars) {
-  /*VarDecl *varList = classDecl.varList;
-  int numVars = classDecl.numVars;*/
   int i, j;
   for(i = 0; i < numVars; i += 1) {
     VarDecl currentVar = varList[i];
@@ -243,6 +239,10 @@ void validateVarListTypes(VarDecl *varList, int numVars) {
   }
 }
 
+/** Checks for the validity method definitions and method body expressions
+  * @param classNum => Current class number
+  * @param classDecl => current class declaration
+  */
 void validateMethodListTypes(int classNum, ClassDecl classDecl) {
   MethodDecl *methodList = classDecl.methodList;
   int numMethods = classDecl.numMethods;
@@ -292,6 +292,10 @@ void validateMethodListTypes(int classNum, ClassDecl classDecl) {
   }
 }
 
+/** Checks for the method in super classes and validates the signature of overridden methods recursively
+  * @param superClass => current class to look search
+  * @param currentMethodDecl => current method declaration
+  */
 void validateMethodOverride(ClassDecl superClass, MethodDecl currentMethodDecl) {
   int i;
   MethodDecl *methodList = superClass.methodList;
@@ -313,6 +317,11 @@ void validateMethodOverride(ClassDecl superClass, MethodDecl currentMethodDecl) 
   }
 }
 
+/** Type check the given ASTree of an expression
+  * @param t => ASTree to type check
+  * @param classContainingExpr => containing class context information
+  * @param methodContainingExpr => containing method context information
+  */
 int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   if(t == NULL) throwError("Nothing to type check.", -1);
   /* Setting the static class number and static member number here. */
@@ -437,6 +446,13 @@ int typeDotIdExpr(ASTree *t, int classContainingExpr, int methodContainingExpr){
   return typeOfExpr;
 }
 
+/** Type check Comp expression (==, ||)
+  * @param t => AST of the expression list.
+  * @param classContainingExprs => class number of the containing class
+  * @param methodContainingExprs => method number of the containing method
+  * @returns => Nat type if valid.
+  * @throws => Type mismatch error
+  */
 int typeCompExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *compNode = t->children;
   int typeLeftOperand = typeExpr(compNode->data, classContainingExpr, methodContainingExpr);
@@ -448,6 +464,13 @@ int typeCompExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   return -1;
 }
 
+/** Type check Binary expression (+, -, *)
+  * @param t => AST of the expression list.
+  * @param classContainingExprs => class number of the containing class
+  * @param methodContainingExprs => method number of the containing method
+  * @returns => Nat type if valid.
+  * @throws => Type mismatch error
+  */
 int typeBinaryExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *binaryNode = t->children;
   int typeLeftOperand = typeExpr(binaryNode->data, classContainingExpr, methodContainingExpr);
@@ -580,6 +603,7 @@ int typeAssignExpr(ASTree *t, int classContainingExpr, int methodContainingExpr)
   return typeOfLhs;
 }
 
+/** Type check Dot Assign expression  */
 int typeDotAssignExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *dotAssignNode = t->children;
   int typeOfLhs = typeExpr(dotAssignNode->data, classContainingExpr, methodContainingExpr);
@@ -608,6 +632,7 @@ int typeDotAssignExpr(ASTree *t, int classContainingExpr, int methodContainingEx
   return typeOfLhs;
 }
 
+/** Type check Not expression  */
 int typeNotExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *notNode = t->children;
   int typeOfExpr = typeExpr(notNode->data, classContainingExpr, methodContainingExpr);
@@ -640,6 +665,7 @@ int typeMethodCallExpr(ASTree *t, int classContainingExpr, int methodContainingE
   return methodDecl.returnType;
 }
 
+/** Type check Dot Method Call expression  */
 int typeDotMethodCallExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *dotMethodNode = t->children;
   int typeOfExpr = typeExpr(dotMethodNode->data, classContainingExpr, methodContainingExpr);
@@ -685,6 +711,7 @@ MethodDecl getMethodDeclInClass(ClassDecl currentClass, char *methodName, int li
   }
 }
 
+/** Type check If then else expression  */
 int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *ifThenElseNode = t->children;
   int typeOfExpr = typeExpr(ifThenElseNode->data, classContainingExpr, methodContainingExpr);
@@ -705,6 +732,7 @@ int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingE
   return join(typeOfIf, typeOfElse);
 }
 
+/** Type check For expression  */
 int typeForExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *forNode = t->children;
   int typeOfExpr = typeExpr(forNode->data, classContainingExpr, methodContainingExpr);
@@ -724,6 +752,7 @@ int typeForExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   return -1;
 }
 
+/** Type check printNat expression  */
 int typePrintExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *printNatNode = t->children;
   int typeOfExpr = typeExpr(printNatNode->data, classContainingExpr, methodContainingExpr);
@@ -733,6 +762,7 @@ int typePrintExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) 
   return -1;
 }
 
+/** Type check greater than expression  */
 int typeGreaterExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *greaterNode = t->children;
   int typeLeftOperand = typeExpr(greaterNode->data, classContainingExpr, methodContainingExpr);

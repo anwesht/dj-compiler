@@ -39,6 +39,9 @@ void* Calloc(size_t nitems, size_t size) {
   return memPtr;
 }
 
+/** Find the number corresponding to given class name
+  * @param className => the Class name to look for
+  * @returns => Number corresponding to class name in the symbol table */
 int classNameToNumber(char *className) {
   int returnNum = -3, i;
   for(i = 0; i < numClasses; i += 1) {
@@ -50,6 +53,10 @@ int classNameToNumber(char *className) {
   return returnNum;
 }
 
+/** Finds the length of the list provided.
+  * @param currentNode => The ASTList node
+  * @return => Length of the ASTList
+  */
 int getLengthOfList(ASTList *currentNode){
   int length = 0;
 
@@ -210,7 +217,6 @@ void setupClassesST(ASTree *classDeclList) {
   classesST = (ClassDecl*)Calloc(numClasses+1, sizeof(ClassDecl));
 
   ASTList *currentNode = classDeclList->children;
-//  ASTree *classDeclNode;
   ASTList *classDeclNode;
 
   int classNum = 1; //class 0 = Object
@@ -243,7 +249,6 @@ void setupClassesST(ASTree *classDeclList) {
     currentNode = currentNode->next;
   }
 }
-
 
 void printVarList(VarDecl *st, int size) {
   int i;
@@ -313,7 +318,6 @@ void setupSymbolTables(ASTree *fullProgramAST) {
 
   if(DEBUG) printClassesST();
   if(DEBUG) printVarList(mainBlockST, numMainBlockLocals);
-
 }
 
 
