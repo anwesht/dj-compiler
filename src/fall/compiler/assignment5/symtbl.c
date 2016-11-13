@@ -7,22 +7,18 @@
 #include <string.h>
 #include "symtbl.h"
 
+typedef enum
+{
+  false,
+  true
+} bool;
+
 typedef struct Map {
   char *name;
-//  int num;
 } Map;
 
 static Map *classNameToNumberMap;
 void printClassesToNumberMap();
-
-//Available global variables from symtbl.h
-//ASTree *mainExprs;
-//
-//// Array (symbol table) of locals in the main block
-//int numMainBlockLocals;  //size of the array
-//VarDecl *mainBlockST;  //the array itself
-//int numClasses;  //size of the array
-//ClassDecl *classesST;  //the array itself
 
 static void throwError(char *message) {
   printf("\n>>> ");
@@ -305,15 +301,17 @@ void setupSymbolTables(ASTree *fullProgramAST) {
   setNumClasses(classDeclList->children);
   setupClassesToNumberMap(classDeclList->children);
 
-//  printClassesToNumberMap();
+  bool DEBUG = false;
+
+  if(DEBUG) printClassesToNumberMap();
   setupClassesST(classDeclList);
 
   ASTree *mainVarDeclList = fullProgramAST->children->next->data;
   setNumMainBlockLocals(mainVarDeclList->children);
   setupMainBlockST(mainVarDeclList);
 
-//  printClassesST();
-//  printVarList(mainBlockST, numMainBlockLocals);
+  if(DEBUG) printClassesST();
+  if(DEBUG) printVarList(mainBlockST, numMainBlockLocals);
 
 }
 

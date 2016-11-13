@@ -11,6 +11,12 @@
 #include "symtbl.h"
 #include "typecheck.h"
 
+typedef enum
+{
+  false,
+  true
+} bool;
+
 static TokenType token;     /* holds current token */
 static TokenType nextToken; /* holds the lookahead token */
 
@@ -588,10 +594,11 @@ int main( int argc, char **argv )
     exit(-1);
   }
 
+  bool DEBUG = false;
   /* parse the input program */
   ASTree *pgmAST = parse();
   /* Print AST */
-  printAST(pgmAST);
+  if(DEBUG) printAST(pgmAST);
 
   setupSymbolTables(pgmAST);
   typecheckProgram();
