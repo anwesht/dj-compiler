@@ -41,6 +41,7 @@ int typeCompExpr(ASTree*, int, int);
 int typeBinaryExpr(ASTree*, int, int);
 int typeDotIdExpr(ASTree*, int, int);
 int typeDotAssignExpr(ASTree*, int, int);
+int typeNotExpr(ASTree*, int, int);
 
 //todo: Set the staticClassNum and staticMemberNum in ast!!!
 
@@ -339,6 +340,9 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case NULL_EXPR:
       return -2;
 
+    case NOT_EXPR:
+      return typeNotExpr(t, classContainingExpr, methodContainingExpr);
+
     case AST_ID:
       return typeId(t, classContainingExpr, methodContainingExpr);
 
@@ -597,6 +601,15 @@ int typeDotAssignExpr(ASTree *t, int classContainingExpr, int methodContainingEx
   }
   printf("type of assignment is: %d\n", typeOfLhs);
   return typeOfLhs;
+}
+
+int typeNotExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *notNode = t->children;
+  int typeOfExpr = typeExpr(notNode->data, classContainingExpr, methodContainingExpr);
+  if(typeOfExpr != -1) {
+    throwError("Cannot find complement of a none Nat Type.", notNode->data->lineNumber);
+  }
+  return typeOfExpr;
 }
 
 
