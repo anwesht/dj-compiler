@@ -45,6 +45,7 @@ int typeNotExpr(ASTree*, int, int);
 int typeMethodCallExpr(ASTree*, int, int);
 int typeDotMethodCallExpr(ASTree*, int, int);
 int typeIfThenElseExpr(ASTree*, int, int);
+int typeForExpr(ASTree*, int, int);
 
 MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
 
@@ -389,6 +390,9 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case IF_THEN_ELSE_EXPR:
       return typeIfThenElseExpr(t, classContainingExpr, methodContainingExpr);
 
+    case FOR_EXPR:
+      return typeForExpr(t, classContainingExpr, methodContainingExpr);
+
     default:
       if(t->idVal == NULL) {
         printf("Type Checking: %d | natVal = %d | in line number: %u\n", t->typ, t->natVal, t->lineNumber );
@@ -726,6 +730,25 @@ int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingE
     throwError("Error in If then Else expression. Type mismatch.", ifThenElseNode->data->lineNumber);
   }
   return join(typeOfIf, typeOfElse);
+}
+
+int typeForExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *forNode = t->children;
+  int typeOfExpr = typeExpr(forNode->data, classContainingExpr, methodContainingExpr);
+
+  forNode = forNode->next;
+  typeOfExpr = typeExpr(forNode->data, classContainingExpr, methodContainingExpr);
+
+  if(typeOfExpr != -1){
+    throwError("Expected type Nat.", forNode->data->lineNumber);
+  }
+
+  forNode = forNode->next;
+  typeOfExpr = typeExpr(forNode->data, classContainingExpr, methodContainingExpr);
+
+  forNode = forNode->next;
+  typeOfExpr = typeExprs(forNode->data, classContainingExpr, methodContainingExpr);
+  return -1;
 }
 
 
