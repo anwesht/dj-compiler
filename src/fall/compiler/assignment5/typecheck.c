@@ -341,7 +341,7 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case THIS_EXPR:
       printf("Type This Expr: classContainingExpr: %d | natVal = %d | in line number: %u\n", classContainingExpr, t->natVal, t->lineNumber );
       if(classContainingExpr <= 0) {
-        throwError("Use of this is not allowed here.", t->lineNumber);
+        throwError("Reference to 'this' outside of a class.", t->lineNumber);
       }
       return classContainingExpr;
 
@@ -442,7 +442,7 @@ int typeDotIdExpr(ASTree *t, int classContainingExpr, int methodContainingExpr){
   ASTList *dotIdNode = t->children;
   int typeOfExpr = typeExpr(dotIdNode->data, classContainingExpr, methodContainingExpr);
 
-  if(typeOfExpr < 0){
+  if(typeOfExpr <= 0){
     throwError("Dot operation is not allowed for this type.", t->lineNumber);
   }
 
@@ -616,7 +616,7 @@ int typeDotAssignExpr(ASTree *t, int classContainingExpr, int methodContainingEx
   ASTList *dotAssignNode = t->children;
   int typeOfLhs = typeExpr(dotAssignNode->data, classContainingExpr, methodContainingExpr);
 
-  if(typeOfLhs < 0){
+  if(typeOfLhs <= 0){
     throwError("Dot operation is not allowed for this type.", t->lineNumber);
   }
 
@@ -681,7 +681,7 @@ int typeDotMethodCallExpr(ASTree *t, int classContainingExpr, int methodContaini
   ASTList *dotMethodNode = t->children;
   int typeOfExpr = typeExpr(dotMethodNode->data, classContainingExpr, methodContainingExpr);
 
-  if(typeOfExpr < 0){
+  if(typeOfExpr <= 0){
     throwError("Dot operation is not allowed for this type.", t->lineNumber);
   }
 
