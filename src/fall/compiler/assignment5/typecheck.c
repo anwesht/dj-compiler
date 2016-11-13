@@ -42,14 +42,21 @@ int typeBinaryExpr(ASTree*, int, int);
 int typeDotIdExpr(ASTree*, int, int);
 int typeDotAssignExpr(ASTree*, int, int);
 int typeNotExpr(ASTree*, int, int);
+int typeMethodCallExpr(ASTree*, int, int);
+
+MethodDecl getMethodDeclInClass(ClassDecl, char*);
 
 //todo: Set the staticClassNum and staticMemberNum in ast!!!
 
-static void throwError(char *message, int errorLine) {
+static void _throwError(char *message, int errorLine) {
   printf(RED"\nERROR >>> "NORMAL);
   printf("%s\n", message);
   printf("  Error in Line Number: %d", errorLine);
   printf("\n");
+}
+
+static void throwError(char *message, int errorLine) {
+  _throwError(message, errorLine);
   exit(-1);
 }
 
@@ -371,6 +378,9 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case DOT_ASSIGN_EXPR:
       return typeDotAssignExpr(t, classContainingExpr, methodContainingExpr);
 
+    case METHOD_CALL_EXPR:
+      return typeMethodCallExpr(t, classContainingExpr, methodContainingExpr);
+
     default:
       if(t->idVal == NULL) {
         printf("Type Checking: %d | natVal = %d | in line number: %u\n", t->typ, t->natVal, t->lineNumber );
@@ -610,6 +620,53 @@ int typeNotExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     throwError("Cannot find complement of a none Nat Type.", notNode->data->lineNumber);
   }
   return typeOfExpr;
+}
+
+/** Type checks a method call
+  * @param t => AST for method call expression
+  * @param classContainingExpr => class number of the containing class
+  * @param methodContainingExpr => method number of the containing method
+  * @returns => The return type of the method called.
+  * @throws => Incompatible type error
+  */
+int typeMethodCallExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  printf("TYPE CHECKING METHOD CALL!!!!!!!!!!!!!!!!!!!!!\n\n\n\n");
+  ASTList *methodCallNode = t->children;
+  char *methodName = methodCallNode->data->idVal;
+  /* Check if method exists in current class/super classes */
+  MethodDecl methodDecl = getMethodDeclInClass(classesST[classContainingExpr], methodName);
+
+  methodCallNode = methodCallNode->next;
+  int typeOfParam = typeExpr(methodCallNode->data, classContainingExpr, methodContainingExpr);
+  printf("Type of Param is : %d\n", typeOfParam);
+  printf("Expected Type of Param is : %d\n", methodDecl.paramType);
+
+  if(methodDecl.paramType != typeOfParam) {
+    throwError("Incompatible type of parameter in method call.", methodCallNode->data->lineNumber);
+  }
+  return methodDecl.returnType;
+}
+
+/** Searches for the given method in given class and its super classes.
+  * @param currentClass => the current class in which to look for.
+  * @param methodName => the method to look for
+  * @returns => MethodDecl of the method if found.
+  * @throws => Method not found error.
+  */
+MethodDecl getMethodDeclInClass(ClassDecl currentClass, char *methodName) {
+  int i;
+  MethodDecl *methodList = currentClass.methodList;
+  for(i = 0; i < currentClass.numMethods; i += 1) {
+    if(strcmp(methodName, methodList[i].methodName) == 0){
+      return methodList[i];
+    }
+  }
+  if(currentClass.superclass > 0) {   // Look for the method in all super classes
+    return getMethodDeclInClass(classesST[currentClass.superclass], methodName);
+  } else {
+    _throwError("Method not found", -1);
+    exit(-1);
+  }
 }
 
 
