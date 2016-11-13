@@ -706,7 +706,26 @@ MethodDecl getMethodDeclInClass(ClassDecl currentClass, char *methodName, int li
 }
 
 int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
-  return 0;
+  ASTList *ifThenElseNode = t->children;
+  int typeOfExpr = typeExpr(ifThenElseNode->data, classContainingExpr, methodContainingExpr);
+
+  if(typeOfExpr != -1){
+    throwError("Expected type Nat.", ifThenElseNode->data->lineNumber);
+  }
+
+  ifThenElseNode = ifThenElseNode->next;
+  int typeOfIf = typeExprs(ifThenElseNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of if = %d\n", typeOfIf);
+
+  ifThenElseNode = ifThenElseNode->next;
+  int typeOfElse = typeExprs(ifThenElseNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of Else = %d\n", typeOfElse);
+  printf("%d", isSubtype(typeOfIf, typeOfElse));
+
+  if(!isSubtype(typeOfIf, typeOfElse) || !isSubtype(typeOfIf, typeOfElse)) {
+    throwError("Error in If then Else expression. Type mismatch.", ifThenElseNode->data->lineNumber);
+  }
+  return join(typeOfIf, typeOfElse);
 }
 
 
