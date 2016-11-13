@@ -14,8 +14,8 @@
 
 typedef enum
 {
-	false,
-	true
+  false,
+  true
 } bool;
 
 int isSubtype(int, int);
@@ -67,7 +67,7 @@ void typecheckProgram(){
   printf("\n\n########################\n");
   printf("Type Checking Program\n");
   printf("########################\n");
-  int i;
+  /*int i;
   for(i = 1 ; i < numClasses; i += 1) {
     printf("is Sub Type %s  = %d\n" ,classesST[i].className, isSubtype(i, 2));
   }
@@ -78,7 +78,7 @@ void typecheckProgram(){
   printf("Is Subtype: %d\n",isSubtype(-2, 2));
   printf("Is Subtype: %d\n",isSubtype(-2, -1));
 
-  printf("join 3 and 4: %d\n", join(3, 4));
+  printf("join 3 and 4: %d\n", join(3, 4));*/
 
   /* Validate types of all classes */
   validateClasses();
@@ -301,7 +301,7 @@ void validateMethodListTypes(int classNum, ClassDecl classDecl) {
     /* Validate Method Expr List */
     int typeOfBodyExprs = typeExprs(currentMethod.bodyExprs, classNum, i);
     if(!isSubtype(typeOfBodyExprs, currentMethod.returnType)) {
-      throwError("Incompatible return expression.",
+      throwError("Return Type Mismatch.",
         currentMethod.bodyExprs->childrenTail->data->lineNumber);
     }
   }
@@ -349,7 +349,7 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
       return -1;
 
     case PRINT_EXPR:
-      return -1;
+      return typePrintExpr(t, classContainingExpr, methodContainingExpr);
 
     case NULL_EXPR:
       return -2;
@@ -373,9 +373,11 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
       return typeAssignExpr(t, classContainingExpr, methodContainingExpr);
 
     case EQUALITY_EXPR:
-    case GREATER_THAN_EXPR:
     case OR_EXPR:
       return typeCompExpr(t, classContainingExpr, methodContainingExpr);
+
+    case GREATER_THAN_EXPR:
+      return typeGreaterExpr(t, classContainingExpr, methodContainingExpr);
 
     case PLUS_EXPR:
     case MINUS_EXPR:
@@ -471,13 +473,18 @@ int typeBinaryExpr(ASTree *t, int classContainingExpr, int methodContainingExpr)
   ASTList *binaryNode = t->children;
   int typeLeftOperand = typeExpr(binaryNode->data, classContainingExpr, methodContainingExpr);
   printf("The type of Left operand = %d\n", typeLeftOperand);
+
+  if(typeLeftOperand != -1) {
+    throwError("Non Nat type LHS in Binary Expression.", binaryNode->data->lineNumber);
+  }
   binaryNode = binaryNode->next;
   int typeRightOperand = typeExpr(binaryNode->data, classContainingExpr, methodContainingExpr);
   printf("The type of Right OPerand = %d\n", typeRightOperand);
-  if(!isSubtype(typeLeftOperand, typeRightOperand) || !isSubtype(typeRightOperand, typeLeftOperand)) {
-    throwError("Error in Binary expression. Type mismatch.", binaryNode->data->lineNumber);
+  if(typeLeftOperand != -1) {
+    throwError("Non Nat type RHS in Binary Expression.", binaryNode->data->lineNumber);
   }
-  return join(typeLeftOperand, typeRightOperand);
+//  return join(typeLeftOperand, typeRightOperand);
+  return -1;
 }
 
 /** Type checks New Expression
@@ -661,7 +668,7 @@ int typeMethodCallExpr(ASTree *t, int classContainingExpr, int methodContainingE
   printf("Expected Type of Param is : %d\n", methodDecl.paramType);
 
   if(methodDecl.paramType != typeOfParam) {
-    throwError("Incompatible type of parameter in method call.", methodCallNode->data->lineNumber);
+    throwError("Argument type doesn't match declared parameter type.", methodCallNode->data->lineNumber);
   }
   return methodDecl.returnType;
 }
@@ -686,7 +693,7 @@ int typeDotMethodCallExpr(ASTree *t, int classContainingExpr, int methodContaini
   printf("Expected Type of Param is : %d\n", methodDecl.paramType);
 
   if(methodDecl.paramType != typeOfParam) {
-    throwError("Incompatible type of parameter in method call.", dotMethodNode->data->lineNumber);
+    throwError("Argument type doesn't match declared parameter type.", dotMethodNode->data->lineNumber);
   }
   return methodDecl.returnType;
 }
@@ -718,7 +725,7 @@ int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingE
   int typeOfExpr = typeExpr(ifThenElseNode->data, classContainingExpr, methodContainingExpr);
 
   if(typeOfExpr != -1){
-    throwError("Expected type Nat.", ifThenElseNode->data->lineNumber);
+    throwError("Expected type Nat in if test.", ifThenElseNode->data->lineNumber);
   }
 
   ifThenElseNode = ifThenElseNode->next;
@@ -731,7 +738,7 @@ int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingE
   printf("%d", isSubtype(typeOfIf, typeOfElse));
 
   if(!isSubtype(typeOfIf, typeOfElse) || !isSubtype(typeOfIf, typeOfElse)) {
-    throwError("Error in If then Else expression. Type mismatch.", ifThenElseNode->data->lineNumber);
+    throwError("Types of 'then' and 'else' branches mismatch.", ifThenElseNode->data->lineNumber);
   }
   return join(typeOfIf, typeOfElse);
 }
@@ -744,7 +751,7 @@ int typeForExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   typeOfExpr = typeExpr(forNode->data, classContainingExpr, methodContainingExpr);
 
   if(typeOfExpr != -1){
-    throwError("Expected type Nat.", forNode->data->lineNumber);
+    throwError("Expected type Nat in loop test.", forNode->data->lineNumber);
   }
 
   forNode = forNode->next;
@@ -752,6 +759,32 @@ int typeForExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
 
   forNode = forNode->next;
   typeOfExpr = typeExprs(forNode->data, classContainingExpr, methodContainingExpr);
+  return -1;
+}
+
+int typePrintExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *printNatNode = t->children;
+  int typeOfExpr = typeExpr(printNatNode->data, classContainingExpr, methodContainingExpr);
+  if(typeOfExpr != -1) {
+    throwError("Non Nat type in printNat.", printNatNode->data->lineNumber);
+  }
+}
+
+int typeGreaterExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *greaterNode = t->children;
+  int typeLeftOperand = typeExpr(greaterNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of Left operand = %d\n", typeLeftOperand);
+
+  if(typeLeftOperand != -1) {
+    throwError("Non Nat type LHS in Greater Than Expression.", greaterNode->data->lineNumber);
+  }
+
+  greaterNode = greaterNode->next;
+  int typeRightOperand = typeExpr(greaterNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of Right OPerand = %d\n", typeRightOperand);
+  if(typeRightOperand != -1) {
+    throwError("Non Nat type RHS in Greater Than Expression.", greaterNode->data->lineNumber);
+  }
   return -1;
 }
 
