@@ -40,6 +40,7 @@ int typeNewExpr(ASTree*);
 int typeCompExpr(ASTree*, int, int);
 int typeBinaryExpr(ASTree*, int, int);
 int typeDotIdExpr(ASTree*, int, int);
+int typeDotAssignExpr(ASTree*, int, int);
 
 //todo: Set the staticClassNum and staticMemberNum in ast!!!
 
@@ -363,6 +364,9 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case TIMES_EXPR:
       return typeBinaryExpr(t, classContainingExpr, methodContainingExpr);
 
+    case DOT_ASSIGN_EXPR:
+      return typeDotAssignExpr(t, classContainingExpr, methodContainingExpr);
+
     default:
       if(t->idVal == NULL) {
         printf("Type Checking: %d | natVal = %d | in line number: %u\n", t->typ, t->natVal, t->lineNumber );
@@ -374,7 +378,7 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
 }
 
 /** Type checks the provided expressions list.
-  * @param t=> AST of the expression list.
+  * @param t => AST of the expression list.
   * @param classContainingExprs => class number of the containing class
   * @param methodContainingExprs => method number of the containing method
   * @returns => The type of the last expression in the expression list.
@@ -389,6 +393,14 @@ int typeExprs(ASTree *t, int classContainingExprs, int methodContainingExprs) {
   return -1;
 }
 
+/** Type checks dot expression id.
+  * @param t => AST of the expression list.
+  * @param classContainingExpr => class number of the containing class
+  * @param methodContainingExpr => method number of the containing method
+  * @returns => The type of the field name if found.
+  * @throws => Dot operation not allowed error.
+            => Field name not defined error.
+  */
 int typeDotIdExpr(ASTree *t, int classContainingExpr, int methodContainingExpr){
   ASTList *dotIdNode = t->children;
   int typeOfExpr = typeExpr(dotIdNode->data, classContainingExpr, methodContainingExpr);
@@ -400,15 +412,8 @@ int typeDotIdExpr(ASTree *t, int classContainingExpr, int methodContainingExpr){
   dotIdNode = dotIdNode->next;
   char *fieldName = dotIdNode->data->idVal;
   ClassDecl currentClass;
-  printf("dotit:\n");
-  printf("dotit: %s\n", dotIdNode->data->idVal);
 
-  // Only Checking for field names if the type is not Object. Object can have any dynamic type, so not checking fields
   typeOfExpr = getTypeOfVarInClass(classesST[typeOfExpr], fieldName);
-  /*if(typeOfExpr == -3) {
-    printf("Field name '%s' not defined.", dotIdNode->data->idVal);
-    throwError("Undefined Field Name.", t->lineNumber );
-  }*/
 
   if(typeOfExpr == -3) {
     printf("Field name '%s' not defined.", fieldName);
@@ -552,17 +557,47 @@ int getTypeOfVarInLocalsST(VarDecl *varList, int numVars, char *varName) {
   */
 int typeAssignExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *assignNode = t->children;
-  int typeLhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
-  printf("The type of LHS = %d\n", typeLhs);
+  int typeOfLhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of LHS = %d\n", typeOfLhs);
   assignNode = assignNode->next;
-  int typeRhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
-  printf("The type of RHS = %d\n", typeRhs);
-  printf("%d", isSubtype(typeRhs, typeLhs));
-  if(!isSubtype(typeRhs, typeLhs)) {
+  int typeOfRhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
+  printf("The type of RHS = %d\n", typeOfRhs);
+  printf("%d", isSubtype(typeOfRhs, typeOfLhs));
+  if(!isSubtype(typeOfRhs, typeOfLhs)) {
     throwError("Error is Assignment. RHS is not a sub-type of LHS.", assignNode->data->lineNumber);
   }
-  printf("type of assignment is: %d\n", typeLhs);
-  return typeLhs;
+  printf("type of assignment is: %d\n", typeOfLhs);
+  return typeOfLhs;
 }
+
+int typeDotAssignExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  ASTList *dotAssignNode = t->children;
+  int typeOfLhs = typeExpr(dotAssignNode->data, classContainingExpr, methodContainingExpr);
+
+  if(typeOfLhs < 0){
+    throwError("Dot operation is not allowed for this type.", t->lineNumber);
+  }
+
+  dotAssignNode = dotAssignNode->next;
+  char *fieldName = dotAssignNode->data->idVal;
+  ClassDecl currentClass;
+
+  typeOfLhs = getTypeOfVarInClass(classesST[typeOfLhs], fieldName);
+
+  if(typeOfLhs == -3) {
+    printf("Field name '%s' not defined.", fieldName);
+    throwError("Undefined Field Name.", t->lineNumber );
+  }
+
+  dotAssignNode = dotAssignNode->next;
+  int typeOfRhs = typeExpr(dotAssignNode->data, classContainingExpr, methodContainingExpr);
+
+  if(!isSubtype(typeOfRhs, typeOfLhs)) {
+    throwError("Error is Assignment. RHS is not a sub-type of LHS.", dotAssignNode->data->lineNumber);
+  }
+  printf("type of assignment is: %d\n", typeOfLhs);
+  return typeOfLhs;
+}
+
 
 
