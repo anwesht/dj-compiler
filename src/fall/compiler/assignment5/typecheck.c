@@ -44,6 +44,7 @@ int typeDotAssignExpr(ASTree*, int, int);
 int typeNotExpr(ASTree*, int, int);
 int typeMethodCallExpr(ASTree*, int, int);
 int typeDotMethodCallExpr(ASTree*, int, int);
+int typeIfThenElseExpr(ASTree*, int, int);
 
 MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
 
@@ -385,6 +386,9 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case DOT_METHOD_CALL_EXPR:
       return typeDotMethodCallExpr(t, classContainingExpr, methodContainingExpr);
 
+    case IF_THEN_ELSE_EXPR:
+      return typeIfThenElseExpr(t, classContainingExpr, methodContainingExpr);
+
     default:
       if(t->idVal == NULL) {
         printf("Type Checking: %d | natVal = %d | in line number: %u\n", t->typ, t->natVal, t->lineNumber );
@@ -403,12 +407,14 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   */
 int typeExprs(ASTree *t, int classContainingExprs, int methodContainingExprs) {
   ASTList *currentNode = t->children;
+  int typeOfExprs;
   while(currentNode != NULL && currentNode->data != NULL) {
-    typeExpr(currentNode->data, classContainingExprs, methodContainingExprs);
+    typeOfExprs = typeExpr(currentNode->data, classContainingExprs, methodContainingExprs);
     currentNode = currentNode->next;
   }
-  //todo: return last expression type.
-  return -1;
+  printf("Type of exprs is: %d in class: %d, method: %d\n\n\n", typeOfExprs,
+   classContainingExprs, methodContainingExprs);
+  return typeOfExprs;
 }
 
 /** Type checks dot expression id.
@@ -697,6 +703,10 @@ MethodDecl getMethodDeclInClass(ClassDecl currentClass, char *methodName, int li
     _throwError("Method not found", lineNumber);
     exit(-1);
   }
+}
+
+int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+  return 0;
 }
 
 
