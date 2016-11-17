@@ -33,7 +33,7 @@ int typeExpr(ASTree *t, int, int);
 int typeExprs(ASTree *t, int, int);
 int typeAssignExpr(ASTree*, int, int);
 int getTypeOfVarInLocalsST(VarDecl*, int, char*);
-int getTypeOfVarInClass(ClassDecl, char*);
+int getTypeOfVarInClass(ASTree*, int, char*);
 int typeId(ASTree*, int, int);
 int typeNewExpr(ASTree*);
 int typeCompExpr(ASTree*, int, int);
@@ -102,10 +102,11 @@ int isSubtype(int sub, int super) {
       int currentClass = sub;
       int i;
       for(i = 0; i < numClasses; i += 1) {
-        if((currentClass = classesST[currentClass].superclass) == super) {
+        if(currentClass == super) {
           isSubtype = true;
           break;
         }
+        currentClass = classesST[currentClass].superclass;
       }
     }
   }
@@ -435,9 +436,8 @@ int typeDotIdExpr(ASTree *t, int classContainingExpr, int methodContainingExpr){
 
   dotIdNode = dotIdNode->next;
   char *fieldName = dotIdNode->data->idVal;
-  ClassDecl currentClass;
 
-  typeOfExpr = getTypeOfVarInClass(classesST[typeOfExpr], fieldName);
+  typeOfExpr = getTypeOfVarInClass(t, typeOfExpr, fieldName);
 
   if(typeOfExpr == -3) {
     printf("Field name '%s' not defined.", fieldName);
@@ -458,7 +458,8 @@ int typeCompExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   int typeLeftOperand = typeExpr(compNode->data, classContainingExpr, methodContainingExpr);
   compNode = compNode->next;
   int typeRightOperand = typeExpr(compNode->data, classContainingExpr, methodContainingExpr);
-  if(!isSubtype(typeLeftOperand, typeRightOperand) && !isSubtype(typeRightOperand, typeLeftOperand)) {
+  if(typeLeftOperand < -1 || typeRightOperand < -1 ||
+    (!isSubtype(typeLeftOperand, typeRightOperand) && !isSubtype(typeRightOperand, typeLeftOperand))) {
     throwError("Type mismatch.", compNode->data->lineNumber);
   }
   return -1;
@@ -480,10 +481,10 @@ int typeBinaryExpr(ASTree *t, int classContainingExpr, int methodContainingExpr)
   }
   binaryNode = binaryNode->next;
   int typeRightOperand = typeExpr(binaryNode->data, classContainingExpr, methodContainingExpr);
-  if(typeLeftOperand != -1) {
+
+  if(typeRightOperand != -1) {
     throwError("Non Nat type RHS in Binary Expression.", binaryNode->data->lineNumber);
   }
-//  return join(typeLeftOperand, typeRightOperand);
   return -1;
 }
 
@@ -541,7 +542,7 @@ int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
       return typeOfId;
     }
     /* Find varName in class/super class fields */
-    typeOfId = getTypeOfVarInClass(classesST[classContainingExpr], varName);
+    typeOfId = getTypeOfVarInClass(t, classContainingExpr, varName);
     if(typeOfId == -3) {
       printf("Implicit declaration of variable '%s' in Method.", varName);
       throwError("Implicit Declaration of variable is not allowed in DJ.", t->lineNumber);
@@ -555,16 +556,19 @@ int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   * @param varName => The variable name to look for
   * @returns => The type of varName OR -3(which is an illegal type in DJ) if not found.
   */
-int getTypeOfVarInClass(ClassDecl currentClass, char *varName) {
+int getTypeOfVarInClass(ASTree *t, int currentClassNum, char *varName) {
+  ClassDecl currentClass = classesST[currentClassNum];
   int i;
   VarDecl *varList = currentClass.varList;
   for(i = 0; i < currentClass.numVars; i += 1) {
     if(strcmp(varName, varList[i].varName) == 0){
+      t->staticClassNum = currentClassNum;
+      t->staticMemberNum = i;
       return varList[i].type;
     }
   }
   if(currentClass.superclass > 0) {   // Look for the variable in all classes
-    return getTypeOfVarInClass(classesST[currentClass.superclass], varName);
+    return getTypeOfVarInClass(t, currentClass.superclass, varName);
   }
   return -3;
 }
@@ -616,7 +620,7 @@ int typeDotAssignExpr(ASTree *t, int classContainingExpr, int methodContainingEx
   char *fieldName = dotAssignNode->data->idVal;
   ClassDecl currentClass;
 
-  typeOfLhs = getTypeOfVarInClass(classesST[typeOfLhs], fieldName);
+  typeOfLhs = getTypeOfVarInClass(t, typeOfLhs, fieldName);
 
   if(typeOfLhs == -3) {
     printf("Field name '%s' not defined.", fieldName);
@@ -726,7 +730,8 @@ int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingE
   ifThenElseNode = ifThenElseNode->next;
   int typeOfElse = typeExprs(ifThenElseNode->data, classContainingExpr, methodContainingExpr);
 
-  if(!isSubtype(typeOfIf, typeOfElse) || !isSubtype(typeOfIf, typeOfElse)) {
+  if(typeOfIf < -1 || typeOfElse < -1 ||
+    (!isSubtype(typeOfIf, typeOfElse) && !isSubtype(typeOfElse, typeOfIf))) {
     throwError("Types of 'then' and 'else' branches mismatch.", ifThenElseNode->data->lineNumber);
   }
   return join(typeOfIf, typeOfElse);
