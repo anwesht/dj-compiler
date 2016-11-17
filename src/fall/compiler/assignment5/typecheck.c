@@ -48,7 +48,8 @@ int typeForExpr(ASTree*, int, int);
 int typePrintExpr(ASTree*, int, int);
 int typeGreaterExpr(ASTree*, int, int);
 
-MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
+//MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
+MethodDecl getMethodDeclInClass(ASTree*, int, char*, int);
 
 static void _throwError(char *message, int errorLine) {
   printf(RED"\nSemantic analysis error on line %d >>> "NORMAL, errorLine);
@@ -326,8 +327,7 @@ void validateMethodOverride(ClassDecl superClass, MethodDecl currentMethodDecl) 
 int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   if(t == NULL) throwError("Nothing to type check.", -1);
   /* Setting the static class number and static member number here. */
-  t->staticClassNum = classContainingExpr;
-  t->staticMemberNum = methodContainingExpr;
+
 
   switch(t->typ) {
     case NAT_LITERAL_EXPR:
@@ -354,14 +354,22 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case NOT_EXPR:
       return typeNotExpr(t, classContainingExpr, methodContainingExpr);
 
-    case AST_ID:
+    /*case AST_ID:
       return typeId(t, classContainingExpr, methodContainingExpr);
 
     case ID_EXPR:
     {
       ASTree *astId = t->children->data;
       return typeExpr(astId, classContainingExpr, methodContainingExpr);
-    }
+    }*/
+    case AST_ID:
+    case ID_EXPR:
+      return typeId(t, classContainingExpr, methodContainingExpr);
+//
+//    {
+//      ASTree *astId = t->children->data;
+//      return typeExpr(astId, classContainingExpr, methodContainingExpr);
+//    }
 
     case DOT_ID_EXPR:
       return typeDotIdExpr(t, classContainingExpr, methodContainingExpr);
@@ -411,6 +419,8 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
 int typeExprs(ASTree *t, int classContainingExprs, int methodContainingExprs) {
   ASTList *currentNode = t->children;
   int typeOfExprs;
+   printf("$$$$$$$$$$$\ncurrent class: %d\n", classContainingExprs);
+    printf("current method: %d\n\n--------------\n", methodContainingExprs);
   while(currentNode != NULL && currentNode->data != NULL) {
     typeOfExprs = typeExpr(currentNode->data, classContainingExprs, methodContainingExprs);
     currentNode = currentNode->next;
@@ -515,7 +525,12 @@ int typeNewExpr(ASTree *astClassName) {
   * @throws => Implicit Declaration of variable error
   */
 int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
-  char *varName = t->idVal;
+  char *varName;
+  if(t->typ == ID_EXPR) {
+    varName = t->children->data->idVal;
+  } else {
+    varName = t->idVal;
+  }
   if(classContainingExpr == 0) {
     throwError("Internal Compiler error. Class Containing Expr cannot be 0", t->lineNumber);
   }
@@ -564,6 +579,8 @@ int getTypeOfVarInClass(ASTree *t, int currentClassNum, char *varName) {
     if(strcmp(varName, varList[i].varName) == 0){
       t->staticClassNum = currentClassNum;
       t->staticMemberNum = i;
+      printf("static class num: %d\n", currentClassNum);
+      printf("static Member num: %d\n\n\n", i);
       return varList[i].type;
     }
   }
@@ -657,7 +674,8 @@ int typeMethodCallExpr(ASTree *t, int classContainingExpr, int methodContainingE
   ASTList *methodCallNode = t->children;
   char *methodName = methodCallNode->data->idVal;
   /* Check if method exists in current class/super classes */
-  MethodDecl methodDecl = getMethodDeclInClass(classesST[classContainingExpr],
+//  MethodDecl methodDecl = getMethodDeclInClass(classesST[classContainingExpr],
+  MethodDecl methodDecl = getMethodDeclInClass(t, classContainingExpr,
     methodName, methodCallNode->data->lineNumber);
 
   methodCallNode = methodCallNode->next;
@@ -681,7 +699,8 @@ int typeDotMethodCallExpr(ASTree *t, int classContainingExpr, int methodContaini
   dotMethodNode = dotMethodNode->next;
   char *methodName = dotMethodNode->data->idVal;
   /* Check if method exists in current class/super classes */
-  MethodDecl methodDecl = getMethodDeclInClass(classesST[typeOfExpr],
+//  MethodDecl methodDecl = getMethodDeclInClass(classesST[typeOfExpr],
+  MethodDecl methodDecl = getMethodDeclInClass(t, typeOfExpr,
    methodName, dotMethodNode->data->lineNumber);
 
   dotMethodNode = dotMethodNode->next;
@@ -699,16 +718,21 @@ int typeDotMethodCallExpr(ASTree *t, int classContainingExpr, int methodContaini
   * @returns => MethodDecl of the method if found.
   * @throws => Method not found error.
   */
-MethodDecl getMethodDeclInClass(ClassDecl currentClass, char *methodName, int lineNumber) {
+MethodDecl getMethodDeclInClass(ASTree *t, int currentClassNum, char *methodName, int lineNumber) {
+  ClassDecl currentClass = classesST[currentClassNum];
   int i;
   MethodDecl *methodList = currentClass.methodList;
   for(i = 0; i < currentClass.numMethods; i += 1) {
     if(strcmp(methodName, methodList[i].methodName) == 0){
+      t->staticClassNum = currentClassNum;
+      t->staticMemberNum = i;
+      printf("static class num: %d\n", currentClassNum);
+      printf("static Method num: %d\n\n\n", i);
       return methodList[i];
     }
   }
   if(currentClass.superclass > 0) {   // Look for the method in all super classes
-    return getMethodDeclInClass(classesST[currentClass.superclass], methodName, lineNumber);
+    return getMethodDeclInClass(t, currentClass.superclass, methodName, lineNumber);
   } else {
     _throwError("Method not found", lineNumber);
     exit(-1);
