@@ -122,6 +122,8 @@ void printNodeTypeAndAttribute(ASTree *t) {
         printError("unknown node type in printNodeTypeAndAttribute()");
     }
   printf(" (ends on line %u)", t->lineNumber);
+  printf("\n static class number : %d ", t->staticClassNum);
+  printf("\n static member number : %d ", t->staticMemberNum);
 }
 
 /** Print indented AST */

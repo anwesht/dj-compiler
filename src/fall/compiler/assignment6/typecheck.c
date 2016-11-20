@@ -34,7 +34,7 @@ int typeExprs(ASTree *t, int, int);
 int typeAssignExpr(ASTree*, int, int);
 int getTypeOfVarInLocalsST(VarDecl*, int, char*);
 int getTypeOfVarInClass(ASTree*, int, char*);
-int typeId(ASTree*, int, int);
+int typeId(ASTree*, ASTree*, int, int);
 int typeNewExpr(ASTree*);
 int typeCompExpr(ASTree*, int, int);
 int typeBinaryExpr(ASTree*, int, int);
@@ -326,8 +326,6 @@ void validateMethodOverride(ClassDecl superClass, MethodDecl currentMethodDecl) 
   */
 int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   if(t == NULL) throwError("Nothing to type check.", -1);
-  /* Setting the static class number and static member number here. */
-
 
   switch(t->typ) {
     case NAT_LITERAL_EXPR:
@@ -364,7 +362,7 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     }*/
     case AST_ID:
     case ID_EXPR:
-      return typeId(t, classContainingExpr, methodContainingExpr);
+      return typeId(t, t, classContainingExpr, methodContainingExpr);
 //
 //    {
 //      ASTree *astId = t->children->data;
@@ -518,13 +516,14 @@ int typeNewExpr(ASTree *astClassName) {
 
 /** Type check AST_ID. Looks for the variable name either in main locals
     or method locals and class and super class fields.
+  * @param astParent => AST of the parent node in which to set the staticClass and member numbers.
   * @param t=> AST of the ID.
   * @param classContainingExpr => class number of the containing class
   * @param methodContainingExpr => method number of the containing method
   * @returns => The type of the ID if valid.
   * @throws => Implicit Declaration of variable error
   */
-int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
+int typeId(ASTree *astParent, ASTree *t, int classContainingExpr, int methodContainingExpr) {
   char *varName;
   if(t->typ == ID_EXPR) {
     varName = t->children->data->idVal;
@@ -557,7 +556,7 @@ int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
       return typeOfId;
     }
     /* Find varName in class/super class fields */
-    typeOfId = getTypeOfVarInClass(t, classContainingExpr, varName);
+    typeOfId = getTypeOfVarInClass(astParent, classContainingExpr, varName);
     if(typeOfId == -3) {
       printf("Implicit declaration of variable '%s' in Method.", varName);
       throwError("Implicit Declaration of variable is not allowed in DJ.", t->lineNumber);
@@ -567,6 +566,7 @@ int typeId(ASTree *t, int classContainingExpr, int methodContainingExpr) {
 }
 
 /** Checks for the variable name in fields of the current class and its superclasses recursively.
+  * @param t => The AST in which to set the staticClassNum and staticMemberNum variables.
   * @param currentClass => The symbol table of the class in which to look.\
   * @param varName => The variable name to look for
   * @returns => The type of varName OR -3(which is an illegal type in DJ) if not found.
@@ -615,7 +615,7 @@ int getTypeOfVarInLocalsST(VarDecl *varList, int numVars, char *varName) {
   */
 int typeAssignExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *assignNode = t->children;
-  int typeOfLhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
+  int typeOfLhs = typeId(t, assignNode->data, classContainingExpr, methodContainingExpr);
   assignNode = assignNode->next;
   int typeOfRhs = typeExpr(assignNode->data, classContainingExpr, methodContainingExpr);
   if(!isSubtype(typeOfRhs, typeOfLhs)) {
@@ -635,7 +635,6 @@ int typeDotAssignExpr(ASTree *t, int classContainingExpr, int methodContainingEx
 
   dotAssignNode = dotAssignNode->next;
   char *fieldName = dotAssignNode->data->idVal;
-  ClassDecl currentClass;
 
   typeOfLhs = getTypeOfVarInClass(t, typeOfLhs, fieldName);
 

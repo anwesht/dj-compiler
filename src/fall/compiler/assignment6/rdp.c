@@ -600,8 +600,12 @@ int main( int argc, char **argv )
   /* Print AST */
   if(DEBUG) printAST(pgmAST);
 
+  printf("setting up smbtbl.\n");
   setupSymbolTables(pgmAST);
+  printf("typechecking.\n");
   typecheckProgram();
+  printf("printing ast.\n");
+  printAST(pgmAST);
   /** Close the file */
   fclose(fp);
 
