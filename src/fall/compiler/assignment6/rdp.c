@@ -10,6 +10,7 @@
 #include "ast.h"
 #include "symtbl.h"
 #include "typecheck.h"
+#include "codegen.h"
 
 typedef enum
 {
@@ -575,22 +576,64 @@ ASTree* parse(void) {
   return t;
 }
 
+void printVarList_(VarDecl *st, int size) {
+  int i;
+  for(i = 0; i < size; i += 1) {
+    printf("    VarType: %d (at line number: %d)\n", st[i].type, st[i].typeLineNumber);
+    printf("    VarName: %s (at line number: %d)\n", st[i].varName, st[i].varNameLineNumber);
+  }
+}
+
+void printMethodList_(MethodDecl *st, int size) {
+  int i;
+  for(i = 0; i < size; i += 1) {
+    printf("  returnType => %d (at line number: %d)\n", st[i].returnType, st[i].returnTypeLineNumber);
+    printf("  MethodName => %s (at line number: %d)\n", st[i].methodName, st[i].methodNameLineNumber);
+    printf("  ParamType => %d (at line number: %d)\n", st[i].paramType, st[i].paramTypeLineNumber);
+    printf("  ParamName => %s (at line number: %d)\n", st[i].paramName, st[i].paramNameLineNumber);
+    printf("  Num Locals => %d\n", st[i].numLocals);
+    printVarList_(st[i].localST, st[i].numLocals);
+  }
+}
+
+void printClassesST_() {
+  int i;
+  for(i = 1; i < numClasses; i += 1) {
+    printf("ClassName => %s (line number: %d)\n", classesST[i].className, classesST[i].classNameLineNumber );
+    printf("SuperClass => %d (line number: %d)\n", classesST[i].superclass, classesST[i].superclassLineNumber );
+    printf("Num Vars => %d \n", classesST[i].numVars );
+    printVarList_(classesST[i].varList, classesST[i].numVars);
+    printf("Num Methods => %d \n", classesST[i].numMethods );
+    printMethodList_(classesST[i].methodList, classesST[i].numMethods);
+    printf("\n\n");
+  }
+}
+
 int main( int argc, char **argv )
 {
   if( argc != 2)
   {
-    printf("Usage: dj-ast <file_name> \n");
+    printf("Usage: dj2dism <file_name> \n");
     exit(-1);
   }
 
   char *fileName = argv[1];
-  char c;
 
   printf("file name: %s \n", fileName );
   /** Open given file in read mode */
   fp = fopen( fileName, "r" );
   if (fp == NULL) {
     printf("Error Opening File : %s \n", argv[1] );
+    exit(-1);
+  }
+
+  char *outputFile = "outputDISM.dism";
+
+  printf("Output file name: %s \n", outputFile );
+  /** Open given file in read mode */
+  FILE *out = fopen(outputFile, "w" );
+  if (out == NULL) {
+    printf("Error Opening Output File : %s \n", outputFile );
     exit(-1);
   }
 
@@ -602,10 +645,17 @@ int main( int argc, char **argv )
 
   printf("setting up smbtbl.\n");
   setupSymbolTables(pgmAST);
+  printf("printing ast.\n");
+//  printAST(pgmAST);
+  printClassesST_();
+  printVarList_(mainBlockST, numMainBlockLocals);
+
   printf("typechecking.\n");
   typecheckProgram();
-  printf("printing ast.\n");
-  printAST(pgmAST);
+
+  printf("Generating code.\n");
+  generateDISM(out);
+
   /** Close the file */
   fclose(fp);
 
