@@ -172,9 +172,15 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
  we are generating code for the program's main block. */
 void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
   ASTList *currentNode = expList->children;
-  while(currentNode != NULL && currentNode->data != NULL) {
+  while(true) {
     codeGenExpr(currentNode->data, classNumber, methodNumber);
     currentNode = currentNode->next;
+    /* This saves the result of evaluating only the final expression of the list. */
+    if(currentNode != NULL && currentNode->data != NULL){
+      incSP();
+    } else {
+      break;
+    }
   }
 }
 
