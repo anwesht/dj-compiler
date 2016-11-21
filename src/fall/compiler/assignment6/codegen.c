@@ -17,6 +17,8 @@ typedef enum
 
 void codeGenNatLitExpr(ASTree*);
 void codeGenPrintExpr(ASTree*, int, int);
+void genPrologueMain(void);
+void genEpilogueMain(void);
 
 /* Global for the DISM output file */
 FILE *fout;
@@ -55,7 +57,7 @@ unsigned int getNewLabelNumber() {
 
 /* Get current value of label number*/
 unsigned int getLabelNumber() {
-  return labelNumber;
+  return labelNumber - 1;
 }
 
 /* Print a message and exit under an exceptional condition */
@@ -178,7 +180,6 @@ void genPrologueMain() {
   write("mov 0 0", "BEGIN METHOD/MAIN-BLOCK BODY");
   int i;
   for(i = 0; i < numMainBlockLocals; i += 1) {
-//      VarDecl currentVar = mainBlockST[i];
       write("mov 1 0", "Initializing Main Locals");
       write("str 6 0 1", "M[SP] <- R[r1]");
   }
@@ -187,7 +188,17 @@ void genPrologueMain() {
 /* Generate DISM code as the epilogue to the given method or main
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
-void genEpilogue(int classNumber, int methodNumber);
+void genEpilogue(int classNumber, int methodNumber){
+  if(classNumber < 0){
+    genEpilogueMain();
+  } else {
+    printf("gen Epilogue some class");
+  }
+}
+
+void genEpilogueMain() {
+  write("hlt 0", "NORMAL TERMINATION AT END OF MAIN BLOCK");
+}
 
 /* Generate DISM code for the given method or main block.
  If classNumber < 0 then methodNumber may be anything and we assume
@@ -215,6 +226,7 @@ void generateDISM(FILE *outputFile) {
   fout = outputFile;
   genPrologue(-1, -1);
   codeGenExprs(mainExprs, -1, -1);
+  genEpilogue(-1, -1);
 }
 
 void codeGenNatLitExpr(ASTree *t) {

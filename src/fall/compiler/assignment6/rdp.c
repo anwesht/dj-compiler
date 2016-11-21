@@ -662,6 +662,7 @@ int main( int argc, char **argv )
   char *line = NULL;
   size_t len = 0;
   ssize_t read;
+  int lineNo = 1;
 
   /** read all the lines till end of file
     * getline() returns the length of current line read.
@@ -669,7 +670,7 @@ int main( int argc, char **argv )
     * adjusts the size of the buffer as necessary.
     */
   while ( (read = getline( &line, &len, out )) != -1 ) {
-    printf("%s", line);
+    printf("%d    %s", lineNo++, line);
   }
 
   /** Close the file */
