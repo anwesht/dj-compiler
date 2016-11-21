@@ -21,6 +21,7 @@ void codeGenReadExpr(void);
 void codeGenPlusExpr(ASTree*, int, int);
 void codeGenMinusExpr(ASTree*, int, int);
 void codeGenTimesExpr(ASTree*, int, int);
+void codeGenIfThenElseExpr(const ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -85,6 +86,7 @@ void incSP(){
 }
 
 /* Generate code that decrements the stack pointer */
+//todo move the checking part to a static location using jump
 void decSP(){
 //  fprintf(fout, "        mov 1 1    ;  R[r1] <- 1 (move immediate value)");
   write("mov 1 1", "R[r1] <- 1 (move immediate value)");
@@ -157,6 +159,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
     case DOT_METHOD_CALL_EXPR:
 
     case IF_THEN_ELSE_EXPR:
+      codeGenIfThenElseExpr(t, classNumber, methodNumber);
+      break;
 
     case FOR_EXPR:
 
@@ -303,4 +307,22 @@ void codeGenBinaryExpr(const ASTree *t, int classNumber, int methodNumber) {
   codeGenExpr(binaryExprNode->data, classNumber, methodNumber);
   write("lod 1 6 2", "R[r1] <- Value of expr1");
   write("lod 2 6 1", "R[r2] <- Value of expr2");
+}
+
+void codeGenIfThenElseExpr(const ASTree *t, int classNumber, int methodNumber) {
+  ASTList *ifThenElseNode = t->children;
+  int elseLabel = getNewLabelNumber();
+  int endLabel = getNewLabelNumber();
+  codeGenExpr(ifThenElseNode->data, classNumber, methodNumber);
+  write("lod 1 6 1", "Load ifThenElse test expr");
+  write("beq 1 0 #%d", "if R[r1] == 0 goto elseLabel", elseLabel);
+  incSP();
+  ifThenElseNode = ifThenElseNode->next;
+  codeGenExprs(ifThenElseNode->data, classNumber, methodNumber);
+  write("jmp 0 #%d", "Jump to endLabel", endLabel);
+  writeWithLabel("#%d: mov 0 0", "elseLabel Landing", elseLabel);
+  incSP();
+  ifThenElseNode = ifThenElseNode->next;
+  codeGenExprs(ifThenElseNode->data, classNumber, methodNumber);
+  writeWithLabel("#%d: mov 0 0", "endLabel Landing", endLabel);
 }
