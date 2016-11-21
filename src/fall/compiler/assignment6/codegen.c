@@ -19,9 +19,13 @@ void codeGenNatLitExpr(ASTree*);
 void codeGenPrintExpr(ASTree*, int, int);
 void codeGenReadExpr(void);
 void codeGenPlusExpr(ASTree*, int, int);
+void codeGenMinusExpr(ASTree*, int, int);
+void codeGenTimesExpr(ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
+
+void codeGenBinaryExpr(const ASTree *t, int classNumber, int methodNumber);
 
 /* Global for the DISM output file */
 FILE *fout;
@@ -139,7 +143,12 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case MINUS_EXPR:
+      codeGenMinusExpr(t, classNumber, methodNumber);
+      break;
+
     case TIMES_EXPR:
+      codeGenTimesExpr(t, classNumber, methodNumber);
+      break;
 
     case DOT_ASSIGN_EXPR:
 
@@ -261,13 +270,31 @@ void codeGenReadExpr() {
 }
 
 void codeGenPlusExpr(ASTree *t, int classNumber, int methodNumber){
-  ASTList *plusExprNode = t->children;
-  codeGenExpr(plusExprNode->data, classNumber, methodNumber);
-  plusExprNode = plusExprNode->next;
-  codeGenExpr(plusExprNode->data, classNumber, methodNumber);
-  write("lod 1 6 2", "R[r1] <- Value of expr1");
-  write("lod 2 6 1", "R[r2] <- Value of expr2");
+  codeGenBinaryExpr(t, classNumber, methodNumber);
   write("add 1 1 2", "R[r1] <- R[r1] + R[r2]");
   write("str 6 2 1", "M[SP + 2] <- R[r1]");
   incSP();
+}
+
+void codeGenMinusExpr(ASTree *t, int classNumber, int methodNumber){
+  codeGenBinaryExpr(t, classNumber, methodNumber);
+  write("sub 1 1 2", "R[r1] <- R[r1] - R[r2]");
+  write("str 6 2 1", "M[SP + 2] <- R[r1]");
+  incSP();
+}
+
+void codeGenTimesExpr(ASTree *t, int classNumber, int methodNumber){
+  codeGenBinaryExpr(t, classNumber, methodNumber);
+  write("mul 1 1 2", "R[r1] <- R[r1] * R[r2]");
+  write("str 6 2 1", "M[SP + 2] <- R[r1]");
+  incSP();
+}
+
+void codeGenBinaryExpr(const ASTree *t, int classNumber, int methodNumber) {
+  ASTList *binaryExprNode = t->children;
+  codeGenExpr(binaryExprNode->data, classNumber, methodNumber);
+  binaryExprNode = binaryExprNode->next;
+  codeGenExpr(binaryExprNode->data, classNumber, methodNumber);
+  write("lod 1 6 2", "R[r1] <- Value of expr1");
+  write("lod 2 6 1", "R[r2] <- Value of expr2");
 }
