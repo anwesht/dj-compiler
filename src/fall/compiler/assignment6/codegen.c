@@ -4,7 +4,19 @@
 #include "codegen.h"
 #include "symtbl.h"
 #include <stdarg.h>
+
 #define MAX_DISM_ADDR 65535
+#define RED   "\x1B[31m"
+#define NORMAL "\x1B[0m"
+
+typedef enum
+{
+  false,
+  true
+} bool;
+
+void codeGenNatLitExpr(ASTree*);
+void codeGenPrintExpr(ASTree*, int, int);
 
 /* Global for the DISM output file */
 FILE *fout;
@@ -15,12 +27,7 @@ FILE *fout;
  * @param comment => String representing the DISM instruction comment.
  * @param ...
  */
-//void _write(const char *label, const char* dismFormat, const char* comment, ...){
 void _write(char *label, const char* dismFormat, const char* comment, va_list args){
-//  fprintf(fout, "        mov 1 1    ;  R[r1] <- 1 (move immediate value)");
-//  va_list args;
-//  va_start(args, comment);
-//  fprintf(fout, "        ");
   fprintf(fout, "%s", label);
   vfprintf(fout, dismFormat, args);
   fprintf(fout, "    ; %s\n", comment);
@@ -52,7 +59,11 @@ unsigned int getLabelNumber() {
 }
 
 /* Print a message and exit under an exceptional condition */
-void internalCGerror(char *msg);
+void internalCGerror(char *msg){
+  printf(RED"\nError generating code.>>> "NORMAL);
+  printf("\n  %s\n", msg);
+  printf("\n");
+}
 
 /* Using the global classesST, calculate the total number of fields,
  including inherited fields, in an object of the given type */
@@ -64,10 +75,10 @@ void incSP();
 /* Generate code that decrements the stack pointer */
 void decSP(){
 //  fprintf(fout, "        mov 1 1    ;  R[r1] <- 1 (move immediate value)");
-  write("mov 1, 1", "R[r1] <- 1 (move immediate value)");
-  write("sub 6, 6", "SP--");
-  write("blt 5, 6 %d", "Branch if HP < SP", getNewLabelNumber());
-  write("mov 1, 77", "error code 77 => out of stack memory");
+  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
+  write("sub 6 6 1", "SP--");
+  write("blt 5 6 #%d", "Branch if HP < SP", getNewLabelNumber());
+  write("mov 1 77", "error code 77 => out of stack memory");
   write("hlt 1", " out of stack memory! (SP < HP)");
   writeWithLabel("#%d: mov 0 0", "Landing for decSP", getLabelNumber());
 }
@@ -81,18 +92,97 @@ void checkNullDereference();
  in the given class and method (or main block).
  If classNumber < 0 then methodNumber may be anything and we assume
  we are generating code for the program's main block. */
-void codeGenExpr(ASTree *t, int classNumber, int methodNumber);
+void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
+  if(t == NULL) internalCGerror("Nothing to Code Gen.");
+
+  switch(t->typ) {
+    case NAT_LITERAL_EXPR:
+      codeGenNatLitExpr(t);
+      break;
+    case THIS_EXPR:
+
+    case NEW_EXPR:
+
+    case READ_EXPR:
+
+    case PRINT_EXPR:
+      codeGenPrintExpr(t, classNumber, methodNumber);
+      break;
+
+    case NULL_EXPR:
+
+    case NOT_EXPR:
+    case AST_ID:
+    case ID_EXPR:
+
+    case DOT_ID_EXPR:
+
+    case ASSIGN_EXPR:
+
+    case EQUALITY_EXPR:
+    case OR_EXPR:
+
+    case GREATER_THAN_EXPR:
+
+    case PLUS_EXPR:
+    case MINUS_EXPR:
+    case TIMES_EXPR:
+
+    case DOT_ASSIGN_EXPR:
+
+    case METHOD_CALL_EXPR:
+
+    case DOT_METHOD_CALL_EXPR:
+
+    case IF_THEN_ELSE_EXPR:
+
+    case FOR_EXPR:
+
+    default:
+      printf("Unknown Expression.");
+      exit(-1);
+  }
+}
 
 /* Generate DISM code for an expression list, which appears in
  the given class and method (or main block).
  If classNumber < 0 then methodNumber may be anything and we assume
  we are generating code for the program's main block. */
-void codeGenExprs(ASTree *expList, int classNumber, int methodNumber);
+void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
+  ASTList *currentNode = expList->children;
+  while(currentNode != NULL && currentNode->data != NULL) {
+    codeGenExpr(currentNode->data, classNumber, methodNumber);
+    currentNode = currentNode->next;
+  }
+}
+
+void genPrologueMain();
 
 /* Generate DISM code as the prologue to the given method or main
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
-void genPrologue(int classNumber, int methodNumber);
+void genPrologue(int classNumber, int methodNumber) {
+  /* Main block prologue */
+  if(classNumber < 0) {
+    genPrologueMain();
+  } else {
+    printf("genPrologue some class");
+  }
+
+}
+
+void genPrologueMain() {
+  write("mov 7 %d", "initialize FP", MAX_DISM_ADDR);
+  write("mov 6 %d", "initialize SP", MAX_DISM_ADDR);
+  write("mov 0 0", "ALLOCATE STACK SPACE FOR MAIN LOCALS");
+  write("mov 0 0", "BEGIN METHOD/MAIN-BLOCK BODY");
+  int i;
+  for(i = 0; i < numMainBlockLocals; i += 1) {
+//      VarDecl currentVar = mainBlockST[i];
+      write("mov 1 0", "Initializing Main Locals");
+      write("str 6 0 1", "M[SP] <- R[r1]");
+  }
+}
 
 /* Generate DISM code as the epilogue to the given method or main
  block. If classNumber < 0 then methodNumber may be anything and we
@@ -123,6 +213,21 @@ void genVTable();
 void generateDISM(FILE *outputFile) {
   /* Set global output file pointer */
   fout = outputFile;
+  genPrologue(-1, -1);
+  codeGenExprs(mainExprs, -1, -1);
+}
+
+void codeGenNatLitExpr(ASTree *t) {
+  write("mov 1 %d", "R[r1] <- value of Nat", t->natVal);
+  write("str 6 0 1", "M[SP] <- R[r1] (a nat literal)");
   decSP();
 }
 
+void codeGenPrintExpr(ASTree *t, int classNumber, int methodNumber){
+  ASTList *printNatNode = t->children;
+  /* Push expr to top of stack. */
+  codeGenExpr(printNatNode->data, classNumber, methodNumber);
+  write("lod 1 6 1", "R[r1] <- M[SP + 1]");
+  write("ptn 1", "print nat");
+
+}

@@ -417,8 +417,6 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
 int typeExprs(ASTree *t, int classContainingExprs, int methodContainingExprs) {
   ASTList *currentNode = t->children;
   int typeOfExprs;
-   printf("$$$$$$$$$$$\ncurrent class: %d\n", classContainingExprs);
-    printf("current method: %d\n\n--------------\n", methodContainingExprs);
   while(currentNode != NULL && currentNode->data != NULL) {
     typeOfExprs = typeExpr(currentNode->data, classContainingExprs, methodContainingExprs);
     currentNode = currentNode->next;

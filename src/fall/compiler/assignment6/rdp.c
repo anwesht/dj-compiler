@@ -645,19 +645,36 @@ int main( int argc, char **argv )
 
   printf("setting up smbtbl.\n");
   setupSymbolTables(pgmAST);
-  printf("printing ast.\n");
+
+//  printf("printing ast.\n");
 //  printAST(pgmAST);
-  printClassesST_();
-  printVarList_(mainBlockST, numMainBlockLocals);
+//  printClassesST_();
+//  printVarList_(mainBlockST, numMainBlockLocals);
 
   printf("typechecking.\n");
   typecheckProgram();
 
   printf("Generating code.\n");
   generateDISM(out);
+  fclose(out);
+
+  out = fopen(outputFile, "r");
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t read;
+
+  /** read all the lines till end of file
+    * getline() returns the length of current line read.
+    * automatically allocates a buffer for storing the line read.
+    * adjusts the size of the buffer as necessary.
+    */
+  while ( (read = getline( &line, &len, out )) != -1 ) {
+    printf("%s", line);
+  }
 
   /** Close the file */
   fclose(fp);
+  fclose(out);
 
   return 0;
 }
