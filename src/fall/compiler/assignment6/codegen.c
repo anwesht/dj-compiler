@@ -17,6 +17,8 @@ typedef enum
 
 void codeGenNatLitExpr(ASTree*);
 void codeGenPrintExpr(ASTree*, int, int);
+void codeGenReadExpr(void);
+
 void genPrologueMain(void);
 void genEpilogueMain(void);
 
@@ -106,6 +108,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
     case NEW_EXPR:
 
     case READ_EXPR:
+      codeGenReadExpr();
+      break;
 
     case PRINT_EXPR:
       codeGenPrintExpr(t, classNumber, methodNumber);
@@ -241,5 +245,10 @@ void codeGenPrintExpr(ASTree *t, int classNumber, int methodNumber){
   codeGenExpr(printNatNode->data, classNumber, methodNumber);
   write("lod 1 6 1", "R[r1] <- M[SP + 1]");
   write("ptn 1", "print nat");
+}
 
+void codeGenReadExpr() {
+  write("rdn 1", "R[r1] <- Input nat from stdin");
+  write("str 6 0 1", "M[SP] <- R[r1]");
+  decSP();
 }
