@@ -18,6 +18,7 @@ typedef enum
 void codeGenNatLitExpr(ASTree*);
 void codeGenPrintExpr(ASTree*, int, int);
 void codeGenReadExpr(void);
+void codeGenPlusExpr(ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -74,7 +75,10 @@ void internalCGerror(char *msg){
 int getNumObjectFields(int type);
 
 /* Generate code that increments the stack pointer */
-void incSP();
+void incSP(){
+  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
+  write("add 6 6 1", "SP++");
+}
 
 /* Generate code that decrements the stack pointer */
 void decSP(){
@@ -131,6 +135,9 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
     case GREATER_THAN_EXPR:
 
     case PLUS_EXPR:
+      codeGenPlusExpr(t, classNumber, methodNumber);
+      break;
+
     case MINUS_EXPR:
     case TIMES_EXPR:
 
@@ -251,4 +258,16 @@ void codeGenReadExpr() {
   write("rdn 1", "R[r1] <- Input nat from stdin");
   write("str 6 0 1", "M[SP] <- R[r1]");
   decSP();
+}
+
+void codeGenPlusExpr(ASTree *t, int classNumber, int methodNumber){
+  ASTList *plusExprNode = t->children;
+  codeGenExpr(plusExprNode->data, classNumber, methodNumber);
+  plusExprNode = plusExprNode->next;
+  codeGenExpr(plusExprNode->data, classNumber, methodNumber);
+  write("lod 1 6 2", "R[r1] <- Value of expr1");
+  write("lod 2 6 1", "R[r2] <- Value of expr2");
+  write("add 1 1 2", "R[r1] <- R[r1] + R[r2]");
+  write("str 6 2 1", "M[SP + 2] <- R[r1]");
+  incSP();
 }
