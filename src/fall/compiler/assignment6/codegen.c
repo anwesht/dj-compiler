@@ -31,6 +31,7 @@ void codeGenNewExpr(const ASTree*);
 void codeGenAssignExpr(const ASTree*, int, int);
 void codeGenIdExpr(const ASTree*, int, int);
 void codeGenDotAssignExpr(const ASTree *, int, int);
+void codeGenDotIdExpr(const ASTree *, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -192,6 +193,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case DOT_ID_EXPR:
+      codeGenDotIdExpr(t, classNumber, methodNumber);
+      break;
 
     case ASSIGN_EXPR:
       codeGenAssignExpr(t, classNumber, methodNumber);
@@ -588,10 +591,20 @@ void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
   /* Get type of object */
   write("lod 1 6 1", "R[r1] <- address of e");
   write("lod 2 6 2", "R[r2] <- rvalue of RHS");
+  // First member has number = 0. need to offset +1.
   write("str 1 -%d 2", "M[addr of obj - varOffset] <- R[r1] (rvalue of RHS of dot assign expr)", ++staticMemberNum);
   incSP();  // Top of stack now has rvalue of RHS.
   //debug
 //  write("ptn 1", "debug: addr of LHS obj.");
 //  write("ptn 2", "debug: rvalue of RHS of dot assign expr.");
+}
 
+void codeGenDotIdExpr(const ASTree *t, int classNumber, int methodNumber){
+  ASTList *dotIdNode = t->children;
+  codeGenExpr(dotIdNode->data, classNumber, methodNumber);  //Top of stack = address of e1.
+  int staticMemberNum = t->staticMemberNum;
+  write("lod 1 6 1", "R[r1] <- address of e");
+  write("lod 1 1 -%d", "R[r2] <- M[addr of obj - varOffset] (rvalue of member)", ++staticMemberNum);
+  write("str 6 1 1", "M[SP+1] <- R[r1] (rvalue of member)");
+  // No need to decSP()
 }
