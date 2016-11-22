@@ -22,6 +22,7 @@ void codeGenPlusExpr(ASTree*, int, int);
 void codeGenMinusExpr(ASTree*, int, int);
 void codeGenTimesExpr(ASTree*, int, int);
 void codeGenIfThenElseExpr(const ASTree*, int, int);
+void codeGenEqualityExpr(const ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -73,6 +74,7 @@ void internalCGerror(char *msg){
   printf(RED"\nError generating code.>>> "NORMAL);
   printf("\n  %s\n", msg);
   printf("\n");
+  exit(-1);
 }
 
 /* Using the global classesST, calculate the total number of fields,
@@ -136,6 +138,9 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
     case ASSIGN_EXPR:
 
     case EQUALITY_EXPR:
+      codeGenEqualityExpr(t, classNumber, methodNumber);
+      break;
+
     case OR_EXPR:
 
     case GREATER_THAN_EXPR:
@@ -325,4 +330,19 @@ void codeGenIfThenElseExpr(const ASTree *t, int classNumber, int methodNumber) {
   ifThenElseNode = ifThenElseNode->next;
   codeGenExprs(ifThenElseNode->data, classNumber, methodNumber);
   writeWithLabel("#%d: mov 0 0", "endLabel Landing", endLabel);
+}
+
+void codeGenEqualityExpr(const ASTree *t, int classNumber, int methodNumber) {
+  codeGenBinaryExpr(t, classNumber, methodNumber);
+  int trueLabel = getNewLabelNumber();
+  int endLabel = getNewLabelNumber();
+  write("beq 1 2 #%d", "If R[r1] = R[r2] then PC <- trueLabel", trueLabel);
+  write("str 6 2 0", "M[SP] <- 0, i.e. False");
+  write("jmp 0 #%d", "Jump to endLabel", endLabel);
+
+  writeWithLabel("#%d: mov 0 0", "trueLabel Landing for equality expr", trueLabel);
+  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
+  write("str 6 2 1", "M[SP] <- 1, i.e. True");
+  writeWithLabel("#%d: mov 0 0", "endLabel Landing for equality test", endLabel);
+  incSP();
 }
