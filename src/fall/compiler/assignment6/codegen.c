@@ -30,6 +30,7 @@ void codeGenOrExpr(const ASTree*, int, int);
 void codeGenNewExpr(const ASTree*);
 void codeGenAssignExpr(const ASTree*, int, int);
 void codeGenIdExpr(const ASTree*, int, int);
+void codeGenDotAssignExpr(const ASTree *, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -221,6 +222,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case DOT_ASSIGN_EXPR:
+      codeGenDotAssignExpr(t, classNumber, methodNumber);
+      break;
 
     case METHOD_CALL_EXPR:
 
@@ -276,6 +279,8 @@ void genPrologueMain() {
       write("mov 1 0", "Initializing Main Locals");
       write("str 6 0 1", "M[SP] <- R[r1]");
   }
+  write("mov 1 %d", "R[r1] <- number of main block locals", numMainBlockLocals);
+  write("sub 6 6 1", "Move SP after main locals");
 }
 
 /* Generate DISM code as the epilogue to the given method or main
@@ -482,6 +487,10 @@ int getNumberOfFieldsInClass(int currentClassNum) {
   return numFields;
 }
 
+/**
+ * Top of stack = address of new object/pointer to new object
+ * @param t
+ */
 void codeGenNewExpr(const ASTree *t) {
   ASTList *newNode = t->children;
   int newClassNumber = classNameToNumber(newNode->data->idVal);
@@ -498,7 +507,7 @@ void codeGenNewExpr(const ASTree *t) {
   write("sub 1 5 1", "R[r1] <- M[HP - 1]");
   write("str 6 0 1", "M[SP] <- Pointer to new object");
   //debug print.
-  write("ptn 1", "debug: pointer to new object");
+//  write("ptn 1", "debug: pointer to new object");
   decSP();
 }
 
@@ -513,11 +522,11 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
     write("lod 1 6 1", "R[r1] <- rvalue of RHS of assign expr(M[SP + 1]])");
     write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
     //debug
-    write("ptn 1", "debug: rvalue of RHS of assign expr.");
+//    write("ptn 1", "debug: rvalue of RHS of assign expr.");
 
   } else {
     printf("local in class!!!");
-    write("ptn 7", "debug: local in call. FP");
+//    write("ptn 7", "debug: local in call. FP");
   }
 //  decSP();
 }
@@ -532,8 +541,12 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
  */
 int getOffsetOfVarInLocalsST(const VarDecl *varList, int numVars, char *varName) {
   int i;
+  printf("search for var: %s\n", varName);
+  printf("numVars : %d\n", numVars);
+
   for(i = 0; i < numVars; i += 1) {
-    if(strcmp(varName, varList[i].varName)) {
+    printf("current var: %s\n", varList[i].varName);
+    if(strcmp(varName, varList[i].varName) == 0) {
       return i;
     }
   }
@@ -550,7 +563,35 @@ void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
     write("lod 1 7 -%d", "R[r1] <- rvalue of variable", varOffset);
     write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)");
     //debug
-    write("ptn 1", "debug: rvalue of variable");
+//    write("ptn 1", "debug: rvalue of variable");
+  } else {
+    printf("id expr in class!!!");
+//    write("ptn 7", "debug: id expr in class. FP");
   }
   decSP();
+}
+
+void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
+  /* Right associative. CodeGen RHS first */
+  ASTList *dotAssignNode = t->childrenTail;
+
+  codeGenExpr(dotAssignNode->data, classNumber, methodNumber);  //Top of stack = rvalue of RHS
+
+  dotAssignNode = t->children;
+
+  codeGenExpr(dotAssignNode->data, classNumber, methodNumber);  //Top of stack = address of e1.
+
+  //use static class num??
+  int staticClassNum = t->staticClassNum;
+  int staticMemberNum = t->staticMemberNum;
+
+  /* Get type of object */
+  write("lod 1 6 1", "R[r1] <- address of e");
+  write("lod 2 6 2", "R[r2] <- rvalue of RHS");
+  write("str 1 -%d 2", "M[addr of obj - varOffset] <- R[r1] (rvalue of RHS of dot assign expr)", ++staticMemberNum);
+  incSP();  // Top of stack now has rvalue of RHS.
+  //debug
+//  write("ptn 1", "debug: addr of LHS obj.");
+//  write("ptn 2", "debug: rvalue of RHS of dot assign expr.");
+
 }
