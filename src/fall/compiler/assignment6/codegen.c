@@ -6,7 +6,7 @@
 #include <stdarg.h>
 
 #define MAX_DISM_ADDR 65535
-#define RED   "\x1B[31m"
+#define RED    "\x1B[31m"
 #define NORMAL "\x1B[0m"
 
 typedef enum
@@ -25,14 +25,44 @@ void codeGenIfThenElseExpr(const ASTree*, int, int);
 void codeGenEqualityExpr(const ASTree*, int, int);
 void codeGenGreaterThanExpr(const ASTree*, int, int);
 void codeGenForExpr(const ASTree*, int, int);
+void codeGenOrExpr(const ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
 
 void codeGenBinaryExpr(const ASTree *t, int classNumber, int methodNumber);
 
+unsigned int getNewLabelNumber(void);
+void setOrExprEscapeLabel(void);
+void resetOrExprEscapeLabel(void);
+int getOrExprEscapeLabel(void);
+bool checkOrExprEscapeLabel(void);
+
 /* Global for the DISM output file */
 FILE *fout;
+unsigned int orExprEscapeLabel = 0;
+
+void setOrExprEscapeLabel(){
+  if(orExprEscapeLabel == 0) {
+    orExprEscapeLabel = getNewLabelNumber();
+  }
+}
+
+void resetOrExprEscapeLabel(){
+  orExprEscapeLabel = 0;
+}
+
+int getOrExprEscapeLabel(){
+  return orExprEscapeLabel;
+}
+
+bool checkOrExprEscapeLabel(){
+  if(getOrExprEscapeLabel() == 0) {
+      return true;
+  } else {
+    return false;
+  }
+}
 
 /** Write to output file.
  * @param label => the label of DISM instruction
@@ -59,7 +89,7 @@ void writeWithLabel(const char* dismFormat, const char* comment, ...){
 }
 
 /* Global to remember the next unique label number to use */
-unsigned int labelNumber = 0;
+unsigned int labelNumber = 1;
 
 /* Get and increment label number */
 unsigned int getNewLabelNumber() {
@@ -144,6 +174,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case OR_EXPR:
+      codeGenOrExpr(t, classNumber, methodNumber);
+      break;
 
     case GREATER_THAN_EXPR:
       codeGenGreaterThanExpr(t, classNumber, methodNumber);
@@ -336,7 +368,7 @@ void codeGenEqualityExpr(const ASTree *t, int classNumber, int methodNumber) {
 
   writeWithLabel("#%d: mov 0 0", "trueLabel Landing for equality expr", trueLabel);
   write("mov 1 1", "R[r1] <- 1 (move immediate value)");
-  write("str 6 2 1", "M[SP] <- 1, i.e. True");
+  write("str 6 2 1", "M[SP+2] <- 1, i.e. True");
   writeWithLabel("#%d: mov 0 0", "endLabel Landing for equality test", endLabel);
   incSP();
 }
@@ -353,7 +385,7 @@ void codeGenGreaterThanExpr(const ASTree *t, int classNumber, int methodNumber) 
   write("jmp 0 #%d", "Jump to endLabel", endLabel);
 
   writeWithLabel("#%d: mov 0 0", "falseLabel Landing for greater than expr", falseLabel);
-  write("str 6 2 0", "M[SP] <- 0, i.e. False");
+  write("str 6 2 0", "M[SP+2] <- 0, i.e. False");
 
   writeWithLabel("#%d: mov 0 0", "endLabel Landing for greater than test", endLabel);
   incSP();
@@ -379,10 +411,35 @@ void codeGenForExpr(const ASTree *t, int classNumber, int methodNumber) {
   ASTList *forExprBodyNode = t->childrenTail;
   codeGenExprs(forExprBodyNode->data, classNumber, methodNumber);
 
+  //incSP() => result of loop body not required any more??
+  incSP();
   /* CodeGen loop update */
   forNode = forNode->next;
   codeGenExpr(forNode->data, classNumber, methodNumber);
   write("jmp 0 #%d", "Jump to start of loop", loopLabel);
 
   writeWithLabel("#%d: mov 0 0", "End of loop landing", loopEndLabel);
+}
+
+void codeGenOrExpr(const ASTree *t, int classNumber, int methodNumber) {
+  ASTList *orExprNode = t->children;
+  bool createEscapeLabel = checkOrExprEscapeLabel();
+  /* Set the escape label*/
+  setOrExprEscapeLabel();
+  codeGenExpr(orExprNode->data, classNumber, methodNumber);
+
+  write("lod 1 6 1", "R[r1] <- e1 of or expr");
+  write("mov 2 1", "R[r2] <- 1 (move immediate value)");
+  write("beq 1 2 #%d", "Short Circuit OR if true.", getOrExprEscapeLabel());
+
+  //If branch not taken, the result of expr1 is not used.???
+  incSP();
+
+  orExprNode = orExprNode->next;
+  codeGenExpr(orExprNode->data, classNumber, methodNumber);
+
+  if(createEscapeLabel == true){
+    writeWithLabel("#%d: mov 0 0", "Escape label for short circuit or expr", getOrExprEscapeLabel());
+    resetOrExprEscapeLabel();
+  }
 }
