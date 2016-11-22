@@ -29,6 +29,7 @@ void codeGenForExpr(const ASTree*, int, int);
 void codeGenOrExpr(const ASTree*, int, int);
 void codeGenNewExpr(const ASTree*);
 void codeGenAssignExpr(const ASTree*, int, int);
+void codeGenIdExpr(const ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -40,7 +41,7 @@ void setOrExprEscapeLabel(void);
 void resetOrExprEscapeLabel(void);
 int getOrExprEscapeLabel(void);
 bool checkOrExprEscapeLabel(void);
-int getOffsetOfVarInLocalsST(const VarDecl*, const int, const char *varName);
+int getOffsetOfVarInLocalsST(const VarDecl*, int, char *varName);
 
 
 /* Global for the DISM output file */
@@ -186,6 +187,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
     case NOT_EXPR:
     case AST_ID:
     case ID_EXPR:
+      codeGenIdExpr(t, classNumber, methodNumber);
+      break;
 
     case DOT_ID_EXPR:
 
@@ -455,7 +458,6 @@ void codeGenOrExpr(const ASTree *t, int classNumber, int methodNumber) {
   codeGenExpr(orExprNode->data, classNumber, methodNumber);
 
   write("lod 1 6 1", "R[r1] <- e1 of or expr");
-//  write("mov 2 1", "R[r2] <- 1 (move immediate value)");
   write("blt 0 1 #%d", "Short Circuit OR if true.(i.e. if R[r0] < M[SP + 1])", getOrExprEscapeLabel());
 
   //If branch not taken, the result of expr1 is not used.???
@@ -528,7 +530,7 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
  * @return => offset to the variable in the symbol table.
  * @throws => Local vaiable not found error (Should not happen as AST already type checked.)
  */
-int getOffsetOfVarInLocalsST(const VarDecl *varList, const int numVars, const char *varName) {
+int getOffsetOfVarInLocalsST(const VarDecl *varList, int numVars, char *varName) {
   int i;
   for(i = 0; i < numVars; i += 1) {
     if(strcmp(varName, varList[i].varName)) {
@@ -537,4 +539,18 @@ int getOffsetOfVarInLocalsST(const VarDecl *varList, const int numVars, const ch
   }
   _internalCGerror("Local Variable not found");
   exit(-1);
+}
+
+void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
+  ASTList * idExprNode = t->children;
+  char *varName = idExprNode->data->idVal;
+
+  if(classNumber < 0){
+    int varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals, varName);
+    write("lod 1 7 -%d", "R[r1] <- rvalue of variable", varOffset);
+    write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)");
+    //debug
+    write("ptn 1", "debug: rvalue of variable");
+  }
+  decSP();
 }
