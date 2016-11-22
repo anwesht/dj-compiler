@@ -455,8 +455,8 @@ void codeGenOrExpr(const ASTree *t, int classNumber, int methodNumber) {
   codeGenExpr(orExprNode->data, classNumber, methodNumber);
 
   write("lod 1 6 1", "R[r1] <- e1 of or expr");
-  write("mov 2 1", "R[r2] <- 1 (move immediate value)");
-  write("beq 1 2 #%d", "Short Circuit OR if true.", getOrExprEscapeLabel());
+//  write("mov 2 1", "R[r2] <- 1 (move immediate value)");
+  write("blt 0 1 #%d", "Short Circuit OR if true.(i.e. if R[r0] < M[SP + 1])", getOrExprEscapeLabel());
 
   //If branch not taken, the result of expr1 is not used.???
   incSP();
@@ -508,7 +508,7 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
   /* This is a main variable. */
   if(classNumber < 0) {
     int varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals,varName);
-    write("lod 1 6 0", "R[r1] <- rvalue of RHS of assign expr");
+    write("lod 1 6 1", "R[r1] <- rvalue of RHS of assign expr(M[SP + 1]])");
     write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
     //debug
     write("ptn 1", "debug: rvalue of RHS of assign expr.");
@@ -517,7 +517,7 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
     printf("local in class!!!");
     write("ptn 7", "debug: local in call. FP");
   }
-  decSP();
+//  decSP();
 }
 
 /**
