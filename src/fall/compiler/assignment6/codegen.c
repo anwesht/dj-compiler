@@ -24,6 +24,7 @@ void codeGenTimesExpr(ASTree*, int, int);
 void codeGenIfThenElseExpr(const ASTree*, int, int);
 void codeGenEqualityExpr(const ASTree*, int, int);
 void codeGenGreaterThanExpr(const ASTree*, int, int);
+void codeGenForExpr(const ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -171,6 +172,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case FOR_EXPR:
+      codeGenForExpr(t, classNumber, methodNumber);
+      break;
 
     default:
       printf("Unknown Expression.");
@@ -196,19 +199,11 @@ void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
   }
 }
 
-void genPrologueMain();
-
 /* Generate DISM code as the prologue to the given method or main
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
 void genPrologue(int classNumber, int methodNumber) {
-  /* Main block prologue */
-  if(classNumber < 0) {
-    genPrologueMain();
-  } else {
-    printf("genPrologue some class");
-  }
-
+  printf("genPrologue some class");
 }
 
 void genPrologueMain() {
@@ -227,11 +222,7 @@ void genPrologueMain() {
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
 void genEpilogue(int classNumber, int methodNumber){
-  if(classNumber < 0){
-    genEpilogueMain();
-  } else {
-    printf("gen Epilogue some class");
-  }
+  printf("gen Epilogue some class");
 }
 
 void genEpilogueMain() {
@@ -262,9 +253,9 @@ void genVTable();
 void generateDISM(FILE *outputFile) {
   /* Set global output file pointer */
   fout = outputFile;
-  genPrologue(-1, -1);
+  genPrologueMain();
   codeGenExprs(mainExprs, -1, -1);
-  genEpilogue(-1, -1);
+  genEpilogueMain();
 }
 
 void codeGenNatLitExpr(ASTree *t) {
@@ -366,4 +357,32 @@ void codeGenGreaterThanExpr(const ASTree *t, int classNumber, int methodNumber) 
 
   writeWithLabel("#%d: mov 0 0", "endLabel Landing for greater than test", endLabel);
   incSP();
+}
+
+void codeGenForExpr(const ASTree *t, int classNumber, int methodNumber) {
+  ASTList *forNode = t->children;
+  int loopLabel = getNewLabelNumber();
+  int loopEndLabel = getNewLabelNumber();
+  /* CodeGen loop initializer */
+  codeGenExpr(forNode->data, classNumber, methodNumber);
+//  write("lod 1 6 1", "Load loop initializer");
+  //todo: incSp() ??
+
+  writeWithLabel("#%d: mov 0 0", "Loop Label.", loopLabel);
+  /* CodeGen loop test */
+  forNode = forNode->next;
+  codeGenExpr(forNode->data, classNumber, methodNumber);
+  write("lod 1 6 1", "R[r1] <- loop test outcome");
+  write("beq 1 0 #%d", "Loop test failed. Goto end of loop.", loopEndLabel);
+
+  /* CodeGen loop body */
+  ASTList *forExprBodyNode = t->childrenTail;
+  codeGenExprs(forExprBodyNode->data, classNumber, methodNumber);
+
+  /* CodeGen loop update */
+  forNode = forNode->next;
+  codeGenExpr(forNode->data, classNumber, methodNumber);
+  write("jmp 0 #%d", "Jump to start of loop", loopLabel);
+
+  writeWithLabel("#%d: mov 0 0", "End of loop landing", loopEndLabel);
 }
