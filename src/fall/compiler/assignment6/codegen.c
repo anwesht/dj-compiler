@@ -23,6 +23,7 @@ void codeGenMinusExpr(ASTree*, int, int);
 void codeGenTimesExpr(ASTree*, int, int);
 void codeGenIfThenElseExpr(const ASTree*, int, int);
 void codeGenEqualityExpr(const ASTree*, int, int);
+void codeGenGreaterThanExpr(const ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -144,6 +145,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
     case OR_EXPR:
 
     case GREATER_THAN_EXPR:
+      codeGenGreaterThanExpr(t, classNumber, methodNumber);
+      break;
 
     case PLUS_EXPR:
       codeGenPlusExpr(t, classNumber, methodNumber);
@@ -344,5 +347,23 @@ void codeGenEqualityExpr(const ASTree *t, int classNumber, int methodNumber) {
   write("mov 1 1", "R[r1] <- 1 (move immediate value)");
   write("str 6 2 1", "M[SP] <- 1, i.e. True");
   writeWithLabel("#%d: mov 0 0", "endLabel Landing for equality test", endLabel);
+  incSP();
+}
+
+void codeGenGreaterThanExpr(const ASTree *t, int classNumber, int methodNumber) {
+  codeGenBinaryExpr(t, classNumber, methodNumber);
+  int falseLabel = getNewLabelNumber();
+  int endLabel = getNewLabelNumber();
+  // R[r1] > R[r2] ==> R[r1] < R[r2] and R[r1] == R[r2] = false
+  write("blt 1 2 #%d", "If R[r1] < R[r2] then PC <- falseLabel", falseLabel);
+  write("beq 1 2 #%d", "If R[r1] == R[r2] then PC <- falseLabel", falseLabel);
+  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
+  write("str 6 2 1", "M[SP] <- 1, i.e. True");
+  write("jmp 0 #%d", "Jump to endLabel", endLabel);
+
+  writeWithLabel("#%d: mov 0 0", "falseLabel Landing for greater than expr", falseLabel);
+  write("str 6 2 0", "M[SP] <- 0, i.e. False");
+
+  writeWithLabel("#%d: mov 0 0", "endLabel Landing for greater than test", endLabel);
   incSP();
 }
