@@ -4,6 +4,7 @@
 #include "codegen.h"
 #include "symtbl.h"
 #include <stdarg.h>
+#include <string.h>
 
 #define MAX_DISM_ADDR 65535
 #define RED    "\x1B[31m"
@@ -27,6 +28,7 @@ void codeGenGreaterThanExpr(const ASTree*, int, int);
 void codeGenForExpr(const ASTree*, int, int);
 void codeGenOrExpr(const ASTree*, int, int);
 void codeGenNewExpr(const ASTree*);
+void codeGenAssignExpr(const ASTree*, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -38,6 +40,8 @@ void setOrExprEscapeLabel(void);
 void resetOrExprEscapeLabel(void);
 int getOrExprEscapeLabel(void);
 bool checkOrExprEscapeLabel(void);
+int getOffsetOfVarInLocalsST(const VarDecl*, const int, const char *varName);
+
 
 /* Global for the DISM output file */
 FILE *fout;
@@ -103,10 +107,14 @@ unsigned int getLabelNumber() {
 }
 
 /* Print a message and exit under an exceptional condition */
-void internalCGerror(char *msg){
+void _internalCGerror(char *msg){
   printf(RED"\nError generating code.>>> "NORMAL);
   printf("\n  %s\n", msg);
   printf("\n");
+}
+
+void internalCGerror(char *msg){
+  _internalCGerror(msg);
   exit(-1);
 }
 
@@ -182,6 +190,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
     case DOT_ID_EXPR:
 
     case ASSIGN_EXPR:
+      codeGenAssignExpr(t, classNumber, methodNumber);
+      break;
 
     case EQUALITY_EXPR:
       codeGenEqualityExpr(t, classNumber, methodNumber);
@@ -296,6 +306,7 @@ void getDynamicMethodInfo(int staticClass, int staticMethod,
  (2) the calling object's static type (at M[SP+3]), and
  (3) the static method number (at M[SP+2]). */
 void genVTable();
+
 
 void generateDISM(FILE *outputFile) {
   /* Set global output file pointer */
@@ -484,8 +495,46 @@ void codeGenNewExpr(const ASTree *t) {
   write("mov 1 1", "R[r1] <- immediate value 1");
   write("sub 1 5 1", "R[r1] <- M[HP - 1]");
   write("str 6 0 1", "M[SP] <- Pointer to new object");
-
-  write("ptn 6", "debug: pointer to new object");
-
+  //debug print.
+  write("ptn 1", "debug: pointer to new object");
   decSP();
+}
+
+void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
+  ASTList *assignNode = t->children;
+  char *varName = assignNode->data->idVal;
+  assignNode = assignNode->next;
+  codeGenExpr(assignNode->data, classNumber, methodNumber);
+  /* This is a main variable. */
+  if(classNumber < 0) {
+    int varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals,varName);
+    write("lod 1 6 0", "R[r1] <- rvalue of RHS of assign expr");
+    write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
+    //debug
+    write("ptn 1", "debug: rvalue of RHS of assign expr.");
+
+  } else {
+    printf("local in class!!!");
+    write("ptn 7", "debug: local in call. FP");
+  }
+  decSP();
+}
+
+/**
+ * Find the offset to a variable name in the provided symbol table.
+ * @param varList => The symbol table in which to search
+ * @param numVars => The number of variables in the symbol table
+ * @param varName => The name of the variable to look for.
+ * @return => offset to the variable in the symbol table.
+ * @throws => Local vaiable not found error (Should not happen as AST already type checked.)
+ */
+int getOffsetOfVarInLocalsST(const VarDecl *varList, const int numVars, const char *varName) {
+  int i;
+  for(i = 0; i < numVars; i += 1) {
+    if(strcmp(varName, varList[i].varName)) {
+      return i;
+    }
+  }
+  _internalCGerror("Local Variable not found");
+  exit(-1);
 }
