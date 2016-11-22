@@ -763,6 +763,10 @@ int typeForExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   ASTList *forNode = t->children;
   int typeOfExpr = typeExpr(forNode->data, classContainingExpr, methodContainingExpr);
 
+  if(typeOfExpr == -3) {
+    throwError("Invalid type in loop initializer.", forNode->data->lineNumber);
+  }
+
   forNode = forNode->next;
   typeOfExpr = typeExpr(forNode->data, classContainingExpr, methodContainingExpr);
 

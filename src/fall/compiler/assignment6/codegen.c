@@ -26,6 +26,7 @@ void codeGenEqualityExpr(const ASTree*, int, int);
 void codeGenGreaterThanExpr(const ASTree*, int, int);
 void codeGenForExpr(const ASTree*, int, int);
 void codeGenOrExpr(const ASTree*, int, int);
+void codeGenNewExpr(const ASTree*);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -119,6 +120,16 @@ void incSP(){
   write("add 6 6 1", "SP++");
 }
 
+/* Generate code that increments the heap pointer by i */
+void incHP(int i){
+  write("mov 1 %d", "R[r1] <- Heap pointer increment value", i);
+  write("add 5 5 1", "Increment heap pointer");
+  write("blt 5 6 #%d", "Branch if HP < SP", getNewLabelNumber());
+  write("mov 1 77", "error code 77 => out of stack memory");
+  write("hlt 1", " out of stack memory! (SP < HP)");
+  writeWithLabel("#%d: mov 0 0", "Landing for incHP", getLabelNumber());
+}
+
 /* Generate code that decrements the stack pointer */
 //todo move the checking part to a static location using jump
 void decSP(){
@@ -147,9 +158,12 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
     case NAT_LITERAL_EXPR:
       codeGenNatLitExpr(t);
       break;
+
     case THIS_EXPR:
 
     case NEW_EXPR:
+      codeGenNewExpr(t);
+      break;
 
     case READ_EXPR:
       codeGenReadExpr();
@@ -241,6 +255,7 @@ void genPrologue(int classNumber, int methodNumber) {
 void genPrologueMain() {
   write("mov 7 %d", "initialize FP", MAX_DISM_ADDR);
   write("mov 6 %d", "initialize SP", MAX_DISM_ADDR);
+  write("mov 5 1", "initialize HP");
   write("mov 0 0", "ALLOCATE STACK SPACE FOR MAIN LOCALS");
   write("mov 0 0", "BEGIN METHOD/MAIN-BLOCK BODY");
   int i;
@@ -442,4 +457,35 @@ void codeGenOrExpr(const ASTree *t, int classNumber, int methodNumber) {
     writeWithLabel("#%d: mov 0 0", "Escape label for short circuit or expr", getOrExprEscapeLabel());
     resetOrExprEscapeLabel();
   }
+}
+
+int getNumberOfFieldsInClass(int currentClassNum) {
+  ClassDecl currentClass = classesST[currentClassNum];
+  int numFields = currentClass.numVars;
+
+  if(currentClass.superclass > 0) {   // Look for the variable in all classes
+    numFields += getNumberOfFieldsInClass(currentClass.superclass);
+  }
+  return numFields;
+}
+
+void codeGenNewExpr(const ASTree *t) {
+  ASTList *newNode = t->children;
+  int newClassNumber = classNameToNumber(newNode->data->idVal);
+  int numFields = getNumberOfFieldsInClass(newClassNumber);
+  printf("number of fields in current class is: %d \n", numFields);
+  int i;
+  for(i = 0; i < numFields; i += 1){
+    write("str 5 %d 0", "Reserve location for field", i);
+  }
+  write("mov 1 %d", "R[r1] <- class type tag", newClassNumber);
+  write("str 5 %d 1", "Class type tag", numFields);
+  incHP(numFields+1);
+  write("mov 1 1", "R[r1] <- immediate value 1");
+  write("sub 1 5 1", "R[r1] <- M[HP - 1]");
+  write("str 6 0 1", "M[SP] <- Pointer to new object");
+
+  write("ptn 6", "debug: pointer to new object");
+
+  decSP();
 }
