@@ -251,6 +251,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
  If classNumber < 0 then methodNumber may be anything and we assume
  we are generating code for the program's main block. */
 void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
+  printf("generating code Exprs class: %d, method: %d", classNumber, methodNumber);
+
   ASTList *currentNode = expList->children;
   while(true) {
     codeGenExpr(currentNode->data, classNumber, methodNumber);
@@ -268,10 +270,29 @@ void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
 void genPrologue(int classNumber, int methodNumber) {
-  printf("genPrologue some class");
+  MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
+
+  printf("genPrologue some class\n");
+  /* Store old frame pointer in stack.*/
+  write("str 6 0 7", "M[SP] <- Value of old FP");
+
+  /* Update Frame pointer to new FP */
+  write("mov 1 5", "R[r1] <- 5 (immediate value)");
+  write("add 7 6 1", "R[r7] (FP) <- R[r6 (SP) + 5]");
+
+  /* Store all method locals */
+  int i;
+  for(i = 0; i < currentMethod.numLocals; i += 1) {
+    write("mov 1 0", "Initializing Main Locals");
+    write("str 6 -%d 1", "M[SP] <- R[r1]", ++i); // +1 for Old FP, after which we have not updated SP
+  }
+  /* Update SP */
+  write("mov 1 %d", "R[r1] <- number of method locals", ++numMainBlockLocals);
+  write("sub 6 6 1", "Move SP after method locals");
 }
 
 void genPrologueMain() {
+  printf("generating main block prologue\n");
   write("mov 7 %d", "initialize FP", MAX_DISM_ADDR);
   write("mov 6 %d", "initialize SP", MAX_DISM_ADDR);
   write("mov 5 1", "initialize HP");
@@ -290,10 +311,31 @@ void genPrologueMain() {
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
 void genEpilogue(int classNumber, int methodNumber){
-  printf("gen Epilogue some class");
+  printf("gen Epilogue some class\n");
+  MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
+
+  /* Load method result (i.e. current top of stack) */
+  write("lod 1 6 1", "R[r1] <- M[SP + 1] (result of the method)");
+
+  /* Restore stack pointer to current FP . */
+  write("add 6 7 0", "R[r6](SP) <- R[r7] (FP)");
+
+  /* Save return address to jump to later */
+  write("add 2 7 0", "R[r1] <- R[r7] (return address/FP)");
+
+  /* Write result to return address */
+  write("str 6 0 1", "M[SP] <- R[r1] (result of the method)");
+  decSP();
+
+  /* Restore FP (old FP should hold the address of OLD FP)*/
+  write("lod 7 7 -5", "R[r7](FP) <- M[FP - 5] (Old FP)");
+
+  /* Jump to return address */
+  write("jmp 2 0", "jump to return address(R[r2])");
 }
 
 void genEpilogueMain() {
+  printf("generating main block epilogue\n");
   write("hlt 0", "NORMAL TERMINATION AT END OF MAIN BLOCK");
 }
 
@@ -325,6 +367,23 @@ void generateDISM(FILE *outputFile) {
   genPrologueMain();
   codeGenExprs(mainExprs, -1, -1);
   genEpilogueMain();
+
+  /* CodeGen all methods of all classes with label*/
+  int i, j;
+  printf("Num classes : %d", numClasses);
+  for(i = 1; i < numClasses; i += 1) {
+    ClassDecl currentClass = classesST[i];
+    for(j = 0; j < currentClass.numMethods; j += 1) {
+      MethodDecl currentMethod = currentClass.methodList[j];
+      writeWithLabel("#c%dm%d: mov 0 0", "Class method landing", i, j);
+      /* genPrologue */
+      genPrologue(i, j);
+      /* genBody */
+      codeGenExprs(currentMethod.bodyExprs, i, j);
+      /* genEpilogue */
+      genEpilogue(i, j);
+    }
+  }
 }
 
 void codeGenNatLitExpr(ASTree *t) {
@@ -550,6 +609,7 @@ int getOffsetOfVarInLocalsST(const VarDecl *varList, int numVars, char *varName)
   for(i = 0; i < numVars; i += 1) {
     printf("current var: %s\n", varList[i].varName);
     if(strcmp(varName, varList[i].varName) == 0) {
+      printf("found matching var.\n");
       return i;
     }
   }
