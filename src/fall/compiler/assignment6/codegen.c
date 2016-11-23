@@ -32,9 +32,13 @@ void codeGenAssignExpr(const ASTree*, int, int);
 void codeGenIdExpr(const ASTree*, int, int);
 void codeGenDotAssignExpr(const ASTree *, int, int);
 void codeGenDotIdExpr(const ASTree *, int, int);
+void codeGenDotMethodCallExprs(const ASTree *, int, int);
+void codeGenMethodCallExprs(const ASTree *, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
+void genPrologue(int, int);
+void genEpilogue(int, int);
 
 void codeGenBinaryExpr(const ASTree *t, int classNumber, int methodNumber);
 
@@ -229,8 +233,12 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case METHOD_CALL_EXPR:
+//      codeGenMethodCallExprs(t, classNumber, methodNumber);
+//      break;
 
     case DOT_METHOD_CALL_EXPR:
+      codeGenDotMethodCallExprs(t, classNumber, methodNumber);
+      break;
 
     case IF_THEN_ELSE_EXPR:
       codeGenIfThenElseExpr(t, classNumber, methodNumber);
@@ -266,31 +274,6 @@ void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
   }
 }
 
-/* Generate DISM code as the prologue to the given method or main
- block. If classNumber < 0 then methodNumber may be anything and we
- assume we are generating code for the program's main block. */
-void genPrologue(int classNumber, int methodNumber) {
-  MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
-
-  printf("genPrologue some class\n");
-  /* Store old frame pointer in stack.*/
-  write("str 6 0 7", "M[SP] <- Value of old FP");
-
-  /* Update Frame pointer to new FP */
-  write("mov 1 5", "R[r1] <- 5 (immediate value)");
-  write("add 7 6 1", "R[r7] (FP) <- R[r6 (SP) + 5]");
-
-  /* Store all method locals */
-  int i;
-  for(i = 0; i < currentMethod.numLocals; i += 1) {
-    write("mov 1 0", "Initializing Main Locals");
-    write("str 6 -%d 1", "M[SP] <- R[r1]", ++i); // +1 for Old FP, after which we have not updated SP
-  }
-  /* Update SP */
-  write("mov 1 %d", "R[r1] <- number of method locals", ++numMainBlockLocals);
-  write("sub 6 6 1", "Move SP after method locals");
-}
-
 void genPrologueMain() {
   printf("generating main block prologue\n");
   write("mov 7 %d", "initialize FP", MAX_DISM_ADDR);
@@ -305,6 +288,33 @@ void genPrologueMain() {
   }
   write("mov 1 %d", "R[r1] <- number of main block locals", numMainBlockLocals);
   write("sub 6 6 1", "Move SP after main locals");
+  //todo need to check out of memory stuff.
+}
+
+/* Generate DISM code as the prologue to the given method or main
+ block. If classNumber < 0 then methodNumber may be anything and we
+ assume we are generating code for the program's main block. */
+void genPrologue(int classNumber, int methodNumber) {
+  MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
+
+  printf("genPrologue some class\n");
+  /* Store old frame pointer in stack.*/
+  write("str 6 0 7", "M[SP] <- Value of old FP");
+
+  /* Update Frame pointer to new FP */
+  write("mov 1 6", "R[r1] <- 6 (immediate value)");   //CHeck 5 vs 6
+  write("add 7 6 1", "R[r7] (FP) <- R[r6 (SP) + 5]");
+
+  /* Store all method locals */
+  int i;
+  int numLocals = currentMethod.numLocals;
+  for(i = 0; i < numLocals; i += 1) {
+//    write("mov 1 0", "Initializing Main Locals");
+    write("str 6 -%d 0", "M[SP] <- R[r1]", ++i); // +1 for Old FP, after which we have not updated SP
+  }
+  /* Update SP */
+  write("mov 1 %d", "R[r1] <- number of method locals", ++numLocals);
+  write("sub 6 6 1", "Move SP after method locals");
 }
 
 /* Generate DISM code as the epilogue to the given method or main
@@ -321,7 +331,8 @@ void genEpilogue(int classNumber, int methodNumber){
   write("add 6 7 0", "R[r6](SP) <- R[r7] (FP)");
 
   /* Save return address to jump to later */
-  write("add 2 7 0", "R[r1] <- R[r7] (return address/FP)");
+  write("lod 2 7 0", "R[r1] <- R[r7] (return address/FP)");
+//  write("add 2 7 0", "R[r1] <- R[r7] (return address/FP)");
 
   /* Write result to return address */
   write("str 6 0 1", "M[SP] <- R[r1] (result of the method)");
@@ -329,9 +340,10 @@ void genEpilogue(int classNumber, int methodNumber){
 
   /* Restore FP (old FP should hold the address of OLD FP)*/
   write("lod 7 7 -5", "R[r7](FP) <- M[FP - 5] (Old FP)");
-
+  write("ptn 2", "return address");
   /* Jump to return address */
   write("jmp 2 0", "jump to return address(R[r2])");
+//  write("hlt 1", "jump to return address(R[r2])");
 }
 
 void genEpilogueMain() {
@@ -667,4 +679,39 @@ void codeGenDotIdExpr(const ASTree *t, int classNumber, int methodNumber){
   write("lod 1 1 -%d", "R[r2] <- M[addr of obj - varOffset] (rvalue of member)", ++staticMemberNum);
   write("str 6 1 1", "M[SP+1] <- R[r1] (rvalue of member)");
   // No need to decSP()
+}
+
+void codeGenDotMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) {
+  ASTList *dotMethodCallNode = t->children;
+  int returnLabel = getNewLabelNumber();
+  printf("return label is: %d", returnLabel);
+  write("mov 1 #%d", "R[r1] <- #returnLabel", returnLabel);
+  write("ptn 1", "return address");
+  write("str 6 0 1", "push #returnLabel to stack");
+  decSP();
+  codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);  //top of stack = dynamic calling obj.
+
+  /*todo Check dynamic caller obj is not null */
+  // checkNullDereference();
+
+  int staticClassNum = t->staticClassNum;
+  int staticMemberNum = t->staticMemberNum;
+  write("mov 1 %d", "R[r1] <- static class number", staticClassNum);
+  write("str 6 0 1", "M[SP] <- R[r1] (static class number)");
+  write("mov 1 %d", "R[r1] <- static method number", staticMemberNum);
+  write("str 6 1 1", "M[SP] <- R[r1] (static class number)");
+
+  /* codeGen method argument */
+  dotMethodCallNode = t->childrenTail;
+  codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);
+
+  //todo update SP by num.
+  write("mov 1 3", "R[r1] <- 3");
+  write("sub 6 6 1", "Move SP after static info");
+
+  /*todo call dynamic dispatcher/vtable */
+  // call dispatcher
+  write("jmp 0 #c%dm%d", "jump to method.", staticClassNum, staticMemberNum);
+  writeWithLabel("#%d: mov 0 0", "Return label landing for method", returnLabel);
+
 }
