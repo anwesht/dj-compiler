@@ -74,7 +74,7 @@ int getOrExprEscapeLabel(){
 
 bool checkOrExprEscapeLabel(){
   if(getOrExprEscapeLabel() == 0) {
-      return true;
+    return true;
   } else {
     return false;
   }
@@ -164,7 +164,16 @@ void decSP(){
 /* Output code to check for a null value at the top of the stack.
  If the top stack value (at M[SP+1]) is null (0), the DISM code
  output will halt. */
-void checkNullDereference();
+void checkNullDereference(){
+  int nullLabel = getNewLabelNumber();
+  int endLabel = getNewLabelNumber();
+  write("lod 1 6 1", "R[r1] <- M[SP+1] (Checking null dereference)");
+  write("beq 1 0 #%d", "if expr == 0 goto => nullLabel", nullLabel);
+  write("jmp 0 #%d", "not null. jmp to end label.", endLabel);
+  writeWithLabel("#%d: mov 0 0", "nullLabel landing", nullLabel);
+  write("hlt 1", "error code 88 => null-pointer dereference");
+  writeWithLabel("#%d: mov 0 0", "OK to dereference", endLabel);
+}
 
 /* Generate DISM code for the given single expression, which appears
  in the given class and method (or main block).
@@ -295,7 +304,7 @@ void genPrologueMain() {
   int i;
   for(i = 0; i < numMainBlockLocals; i += 1) {
 //      write("mov 1 0", "Initializing Main Locals");
-      write("str 6 0 0", "M[SP] <- R[r1]");
+    write("str 6 0 0", "M[SP] <- R[r1]");
   }
   write("mov 1 %d", "R[r1] <- number of main block locals", numMainBlockLocals);
   write("sub 6 6 1", "Move SP after main locals");
@@ -313,7 +322,7 @@ void genPrologue(int classNumber, int methodNumber) {
   write("str 6 0 7", "M[SP] <- Value of old FP");
 
   /* 2. Update Frame pointer to new FP */
-  write("mov 1 5", "R[r1] <- 5 (immediate value)");   //todo CHeck 5 vs 6 vs 7
+  write("mov 1 5", "R[r1] <- 5 (immediate value)");
   write("add 7 6 1", "R[r7] (FP) <- R[r6 (SP) + 5]");
 
   /* 3. Store all method locals */
@@ -630,7 +639,7 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
       write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
     } else {
       printf("Setting a class field\n");
-    /* Check if varName in fields of class. Variable is in the heap*/
+      /* Check if varName in fields of class. Variable is in the heap*/
       varOffset = getOffsetOfVarInClass(classNumber, varName);
       /* Load address of this object(i.e. the dynamic caller object) */
       write("lod 1 7 -1", "R[r1] <- M[FP -1] (address of e");
@@ -747,7 +756,7 @@ void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
   dotAssignNode = t->children;
 
   codeGenExpr(dotAssignNode->data, classNumber, methodNumber);  //Top of stack = address of e1.
-
+  checkNullDereference();
   //use static class num??
   int staticClassNum = t->staticClassNum;
   int staticMemberNum = t->staticMemberNum;
@@ -766,6 +775,7 @@ void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
 void codeGenDotIdExpr(const ASTree *t, int classNumber, int methodNumber){
   ASTList *dotIdNode = t->children;
   codeGenExpr(dotIdNode->data, classNumber, methodNumber);  //Top of stack = address of e1.
+  checkNullDereference();
   int staticMemberNum = t->staticMemberNum;
   write("lod 1 6 1", "R[r1] <- address of e");
   write("lod 1 1 -%d", "R[r2] <- M[addr of obj - varOffset] (rvalue of member)", ++staticMemberNum);
@@ -790,7 +800,7 @@ void codeGenDotMethodCallExprs(const ASTree *t, int classNumber, int methodNumbe
 
 
   /*todo Check dynamic caller obj is not null */
-  // checkNullDereference();
+  checkNullDereference();
 
   int staticClassNum = t->staticClassNum;
   int staticMemberNum = t->staticMemberNum;
@@ -842,7 +852,7 @@ void codeGenMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) 
 
   decSP();
   /*todo Check dynamic caller obj is not null */
-  // checkNullDereference();
+  checkNullDereference();
 
   int staticClassNum = t->staticClassNum;
   int staticMemberNum = t->staticMemberNum;
