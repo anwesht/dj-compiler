@@ -48,6 +48,7 @@ void resetOrExprEscapeLabel(void);
 int getOrExprEscapeLabel(void);
 bool checkOrExprEscapeLabel(void);
 int getOffsetOfVarInLocalsST(const VarDecl*, int, char *varName);
+int getOffsetOfVarInClass(int, char *varName);
 
 
 /* Global for the DISM output file */
@@ -283,8 +284,8 @@ void genPrologueMain() {
   write("mov 0 0", "BEGIN METHOD/MAIN-BLOCK BODY");
   int i;
   for(i = 0; i < numMainBlockLocals; i += 1) {
-      write("mov 1 0", "Initializing Main Locals");
-      write("str 6 0 1", "M[SP] <- R[r1]");
+//      write("mov 1 0", "Initializing Main Locals");
+      write("str 6 0 0", "M[SP] <- R[r1]");
   }
   write("mov 1 %d", "R[r1] <- number of main block locals", numMainBlockLocals);
   write("sub 6 6 1", "Move SP after main locals");
@@ -298,14 +299,14 @@ void genPrologue(int classNumber, int methodNumber) {
   MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
 
   printf("genPrologue some class\n");
-  /* Store old frame pointer in stack.*/
+  /* 1. Store old frame pointer in stack.*/
   write("str 6 0 7", "M[SP] <- Value of old FP");
 
-  /* Update Frame pointer to new FP */
-  write("mov 1 6", "R[r1] <- 6 (immediate value)");   //CHeck 5 vs 6
+  /* 2. Update Frame pointer to new FP */
+  write("mov 1 5", "R[r1] <- 5 (immediate value)");   //todo CHeck 5 vs 6 vs 7
   write("add 7 6 1", "R[r7] (FP) <- R[r6 (SP) + 5]");
 
-  /* Store all method locals */
+  /* 3. Store all method locals */
   int i;
   int numLocals = currentMethod.numLocals;
   for(i = 0; i < numLocals; i += 1) {
@@ -588,11 +589,12 @@ void codeGenNewExpr(const ASTree *t) {
 void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
   ASTList *assignNode = t->children;
   char *varName = assignNode->data->idVal;
+  int varOffset = -1; //offset to the variable from FP
   assignNode = assignNode->next;
   codeGenExpr(assignNode->data, classNumber, methodNumber);
   /* This is a main variable. */
   if(classNumber < 0) {
-    int varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals,varName);
+    varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals,varName);
     write("lod 1 6 1", "R[r1] <- rvalue of RHS of assign expr(M[SP + 1]])");
     write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
     //debug
@@ -601,8 +603,51 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
   } else {
     printf("local in class!!!");
 //    write("ptn 7", "debug: local in call. FP");
+    MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
+    /* Check if varName is a param */
+    if(strcmp(varName, currentMethod.paramName) == 0){
+      varOffset = 4;
+    }
+    /* Check if varName in method locals */
+    if(varOffset == -1){
+      varOffset = getOffsetOfVarInLocalsST(currentMethod.localST, currentMethod.numLocals,varName);
+      varOffset += 5;
+    }
+
+    /* The variable is in the stack. */
+    if(varOffset != -1) {
+      write("lod 1 6 1", "R[r1] <- rvalue of RHS of assign expr(M[SP + 1]])");
+      write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
+    } else {
+    /* Check if varName in fields of class. Variable is in the heap*/
+      varOffset = getOffsetOfVarInClass(classNumber, varName);
+      /* Load address of this object(i.e. the dynamic caller object) */
+      write("lod 1 7 -1", "R[r1] <- M[FP -1] (address of e");
+      /* Load the RHS value */
+      write("lod 2 6 1", "R[r2] <- rvalue of assign expr(M[SP + 1]])");
+      // First member has number = 0. need to offset +1.
+      write("str 1 -%d 2", "M[addr of obj - varOffset] <- R[r1] (rvalue of RHS of dot assign expr)", ++varOffset);
+    }
   }
 //  decSP();
+}
+
+int getOffsetOfVarInClass(int currentClassNum, char *varName){
+  ClassDecl currentClass = classesST[currentClassNum];
+  int i;
+  VarDecl *varList = currentClass.varList;
+  for(i = 0; i < currentClass.numVars; i += 1) {
+    if(strcmp(varName, varList[i].varName) == 0) {
+      printf("var offset in class is: %d \n", i);
+      return i;
+    }
+  }
+  if(currentClass.superclass > 0) {
+    return getOffsetOfVarInClass(currentClass.superclass, varName);
+  } else {
+    _internalCGerror("Var not found in any class.");
+    exit(-1);
+  }
 }
 
 /**
@@ -625,16 +670,21 @@ int getOffsetOfVarInLocalsST(const VarDecl *varList, int numVars, char *varName)
       return i;
     }
   }
-  _internalCGerror("Local Variable not found");
-  exit(-1);
+  /*_internalCGerror("Local Variable not found");
+  exit(-1);*/
+  return -1;
 }
 
 void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
   ASTList * idExprNode = t->children;
   char *varName = idExprNode->data->idVal;
-
+  int varOffset = -1;
   if(classNumber < 0){
-    int varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals, varName);
+    varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals, varName);
+    if(varOffset == -1) {
+      _internalCGerror("Var not found.");
+      exit(-1);
+    }
     write("lod 1 7 -%d", "R[r1] <- rvalue of variable", varOffset);
     write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)");
     //debug
@@ -642,9 +692,92 @@ void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
   } else {
     printf("id expr in class!!!");
 //    write("ptn 7", "debug: id expr in class. FP");
+    printf("local in class!!!\n");
+//    write("ptn 7", "debug: local in call. FP");
+    MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
+    /* Check if varName is a param */
+    printf("Var name is: %s", varName);
+    printf(" name is: %s", currentMethod.paramName);
+    if(strcmp(varName, currentMethod.paramName) == 0){
+      varOffset = 4;
+    }
+    /* Check if varName in method locals */
+    if(varOffset == -1){
+      varOffset = getOffsetOfVarInLocalsST(currentMethod.localST, currentMethod.numLocals,varName);
+      varOffset += (varOffset != -1) ? 5 : 0;   // 5 fields added in stack for method frames
+    }
+
+    /* The variable is in the stack. */
+    if(varOffset != -1) {
+      write("lod 1 7 -%d", "R[r1] <- rvalue of variable (M[FP - offset])", varOffset);
+      write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)", varOffset);
+    } else {
+      /* Check if varName in fields of class. Variable is in the heap*/
+      varOffset = getOffsetOfVarInClass(classNumber, varName);
+      /* Load address of this object(i.e. the dynamic caller object) */
+      write("lod 1 7 -1", "R[r1] <- M[FP -1] (address of e");
+      /* Load the RHS value */
+      // First member has number = 0. need to offset +1.
+      write("lod 2 1 -%d", "M[addr of obj - varOffset] <- rvalue of field", ++varOffset);
+      /* Store to top of stack*/
+      write("str 6 0 2", "M[SP] <- R[r2] (rvalue of field)");
+    }
   }
   decSP();
 }
+
+/*void codeGenIdExprLvalue(const ASTree *t, int classNumber, int methodNumber) {
+  ASTList * idExprNode = t->children;
+  char *varName = idExprNode->data->idVal;
+  int varOffset = -1;
+  if(classNumber < 0){
+    varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals, varName);
+    if(varOffset == -1) {
+      _internalCGerror("Var not found.");
+      exit(-1);
+    }
+//    write("lod 1 7 -%d", "R[r1] <- rvalue of variable", varOffset);
+    write("sub 1 7 %d", "Calculate lvalue of variable", varOffset);
+    write("str 6 0 1", "M[SP] <- (lvalue of variable)");
+    //debug
+//    write("ptn 1", "debug: rvalue of variable");
+  } else {
+    printf("id expr in class!!!");
+//    write("ptn 7", "debug: id expr in class. FP");
+    printf("local in class!!!\n");
+//    write("ptn 7", "debug: local in call. FP");
+    MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
+    *//* Check if varName is a param *//*
+    printf("Var name is: %s", varName);
+    printf(" name is: %s", currentMethod.paramName);
+    if(strcmp(varName, currentMethod.paramName) == 0){
+      varOffset = 4;
+    }
+    *//* Check if varName in method locals *//*
+    if(varOffset == -1){
+      varOffset = getOffsetOfVarInLocalsST(currentMethod.localST, currentMethod.numLocals,varName);
+      varOffset += (varOffset != -1) ? 5 : 0;   // 5 fields added in stack for method frames
+    }
+
+    *//* The variable is in the stack. *//*
+    if(varOffset != -1) {
+//      write("lod 1 7 -%d", "R[r1] <- rvalue of variable (M[FP - offset])", varOffset);
+      write("sub 1 7 %d", "Calculate lvalue of variable", varOffset);
+      write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)", varOffset);
+    } else {
+      *//* Check if varName in fields of class. Variable is in the heap*//*
+      varOffset = getOffsetOfVarInClass(classNumber, varName);
+      *//* Load address of this object(i.e. the dynamic caller object) *//*
+      write("lod 1 7 -1", "R[r1] <- M[FP -1] (address of e");
+      *//* Load the RHS value *//*
+      // First member has number = 0. need to offset +1.
+      write("lod 2 1 -%d", "M[addr of obj - varOffset] <- rvalue of field", ++varOffset);
+      *//* Store to top of stack*//*
+      write("str 6 0 2", "M[SP] <- R[r2] (rvalue of field)");
+    }
+  }
+  decSP();
+}*/
 
 void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
   /* Right associative. CodeGen RHS first */
@@ -685,29 +818,43 @@ void codeGenDotMethodCallExprs(const ASTree *t, int classNumber, int methodNumbe
   ASTList *dotMethodCallNode = t->children;
   int returnLabel = getNewLabelNumber();
   printf("return label is: %d", returnLabel);
+  /* 1. Push #returnLabel to stack */
   write("mov 1 #%d", "R[r1] <- #returnLabel", returnLabel);
-  write("ptn 1", "return address");
+//  write("ptn 1", "debug: return address");
   write("str 6 0 1", "push #returnLabel to stack");
+
   decSP();
+  /* 2. Push the dynamic calling object's address to stack*/
+  /* Note: if new expr => top of stack is address in heap
+   *       if id expr => it has to be obj type, therefore rvalue = address of obj in heap */
   codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);  //top of stack = dynamic calling obj.
+
 
   /*todo Check dynamic caller obj is not null */
   // checkNullDereference();
 
   int staticClassNum = t->staticClassNum;
   int staticMemberNum = t->staticMemberNum;
+  /* 3. Push static class number to stack */
   write("mov 1 %d", "R[r1] <- static class number", staticClassNum);
   write("str 6 0 1", "M[SP] <- R[r1] (static class number)");
-  write("mov 1 %d", "R[r1] <- static method number", staticMemberNum);
-  write("str 6 1 1", "M[SP] <- R[r1] (static class number)");
 
+  decSP();
+
+  /* 4. Push static member number to stack */
+  write("mov 1 %d", "R[r1] <- static method number", staticMemberNum);
+  write("str 6 -1 1", "M[SP] <- R[r1] (static class number)");
+
+  decSP();
   /* codeGen method argument */
   dotMethodCallNode = t->childrenTail;
+
+  /* 5. Push dynamic incoming argument to stack */
   codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);
 
   //todo update SP by num.
-  write("mov 1 3", "R[r1] <- 3");
-  write("sub 6 6 1", "Move SP after static info");
+//  write("mov 1 4", "R[r1] <- 4"); // from nos. 2 to 5 inclusive = 4 places to shift
+//  write("sub 6 6 1", "Move SP after static info");
 
   /*todo call dynamic dispatcher/vtable */
   // call dispatcher
