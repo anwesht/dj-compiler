@@ -34,6 +34,9 @@ void codeGenDotAssignExpr(const ASTree *, int, int);
 void codeGenDotIdExpr(const ASTree *, int, int);
 void codeGenDotMethodCallExprs(const ASTree *, int, int);
 void codeGenMethodCallExprs(const ASTree *, int, int);
+void codeGenThisExpr();
+void codeGenNullExpr();
+void codeGenNotExpr(const ASTree *, int, int);
 
 void genPrologueMain(void);
 void genEpilogueMain(void);
@@ -176,6 +179,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case THIS_EXPR:
+      codeGenThisExpr();
+      break;
 
     case NEW_EXPR:
       codeGenNewExpr(t);
@@ -190,9 +195,14 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case NULL_EXPR:
+      codeGenNullExpr();
+      break;
 
     case NOT_EXPR:
-    case AST_ID:
+      codeGenNotExpr(t, classNumber, methodNumber);
+      break;
+
+//    case AST_ID: //not an expr. no need to code gen
     case ID_EXPR:
       codeGenIdExpr(t, classNumber, methodNumber);
       break;
@@ -728,59 +738,6 @@ void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
   decSP();
 }
 
-/*void codeGenIdExprLvalue(const ASTree *t, int classNumber, int methodNumber) {
-  ASTList * idExprNode = t->children;
-  char *varName = idExprNode->data->idVal;
-  int varOffset = -1;
-  if(classNumber < 0){
-    varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals, varName);
-    if(varOffset == -1) {
-      _internalCGerror("Var not found.");
-      exit(-1);
-    }
-//    write("lod 1 7 -%d", "R[r1] <- rvalue of variable", varOffset);
-    write("sub 1 7 %d", "Calculate lvalue of variable", varOffset);
-    write("str 6 0 1", "M[SP] <- (lvalue of variable)");
-    //debug
-//    write("ptn 1", "debug: rvalue of variable");
-  } else {
-    printf("id expr in class!!!");
-//    write("ptn 7", "debug: id expr in class. FP");
-    printf("local in class!!!\n");
-//    write("ptn 7", "debug: local in call. FP");
-    MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
-    *//* Check if varName is a param *//*
-    printf("Var name is: %s", varName);
-    printf(" name is: %s", currentMethod.paramName);
-    if(strcmp(varName, currentMethod.paramName) == 0){
-      varOffset = 4;
-    }
-    *//* Check if varName in method locals *//*
-    if(varOffset == -1){
-      varOffset = getOffsetOfVarInLocalsST(currentMethod.localST, currentMethod.numLocals,varName);
-      varOffset += (varOffset != -1) ? 5 : 0;   // 5 fields added in stack for method frames
-    }
-
-    *//* The variable is in the stack. *//*
-    if(varOffset != -1) {
-//      write("lod 1 7 -%d", "R[r1] <- rvalue of variable (M[FP - offset])", varOffset);
-      write("sub 1 7 %d", "Calculate lvalue of variable", varOffset);
-      write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)", varOffset);
-    } else {
-      *//* Check if varName in fields of class. Variable is in the heap*//*
-      varOffset = getOffsetOfVarInClass(classNumber, varName);
-      *//* Load address of this object(i.e. the dynamic caller object) *//*
-      write("lod 1 7 -1", "R[r1] <- M[FP -1] (address of e");
-      *//* Load the RHS value *//*
-      // First member has number = 0. need to offset +1.
-      write("lod 2 1 -%d", "M[addr of obj - varOffset] <- rvalue of field", ++varOffset);
-      *//* Store to top of stack*//*
-      write("str 6 0 2", "M[SP] <- R[r2] (rvalue of field)");
-    }
-  }
-  decSP();
-}*/
-
 void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
   /* Right associative. CodeGen RHS first */
   ASTList *dotAssignNode = t->childrenTail;
@@ -915,4 +872,33 @@ void codeGenMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) 
   write("jmp 0 #c%dm%d", "jump to method.", staticClassNum, staticMemberNum);
   writeWithLabel("#%d: mov 0 0", "Return label landing for method", returnLabel);
 
+}
+
+void codeGenThisExpr() {
+  /* Load FP - 1 = this object.*/
+  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
+  write("sub 1 7 1", "Calculate address of this obj");
+  write("str 6 0 1", "SP <- Address of this");
+  decSP();
+}
+
+void codeGenNullExpr(){
+  write("str 6 0 0", "SP <- null(0)");
+  decSP();
+}
+
+void codeGenNotExpr(const ASTree *t, int classNumber, int methodNumber){
+  ASTList *notNode = t->children;
+  int falseLabel = getNewLabelNumber();
+  int endLabel = getNewLabelNumber();
+  codeGenExpr(notNode->data, classNumber, methodNumber);
+  write("lod 1 6 1", "R[r1] <- expr to negate.");
+  write("beq 1 0 #%d", "if expr > 0 goto => falseLabel", falseLabel);
+  write("str 6 1 0", "M[SP] <- 0 (expr is true. Negating.)");
+  write("jmp 0 #%d", "jmp to end label.", endLabel);
+  writeWithLabel("#%d: mov 0 0", "falseLabel landing", falseLabel);
+  write("mov 1 1", "R[r1] <- 1");
+  write("str 6 1 1", "M[SP] <- 1 (expr is false. Negating.)");
+  writeWithLabel("#%d: mov 0 0", "not expr end label", endLabel);
+  //Replacing expr value with negated value. no need to decSP();
 }
