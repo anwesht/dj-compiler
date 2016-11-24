@@ -341,7 +341,7 @@ void genEpilogue(int classNumber, int methodNumber){
 
   /* Restore FP (old FP should hold the address of OLD FP)*/
   write("lod 7 7 -5", "R[r7](FP) <- M[FP - 5] (Old FP)");
-  write("ptn 2", "return address");
+//  write("ptn 2", "debug: return address");
   /* Jump to return address */
   write("jmp 2 0", "jump to return address(R[r2])");
 //  write("hlt 1", "jump to return address(R[r2])");
@@ -601,7 +601,7 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
 //    write("ptn 1", "debug: rvalue of RHS of assign expr.");
 
   } else {
-    printf("local in class!!!");
+    printf("assign expr in class!!!");
 //    write("ptn 7", "debug: local in call. FP");
     MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
     /* Check if varName is a param */
@@ -611,7 +611,7 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
     /* Check if varName in method locals */
     if(varOffset == -1){
       varOffset = getOffsetOfVarInLocalsST(currentMethod.localST, currentMethod.numLocals,varName);
-      varOffset += 5;
+      varOffset += (varOffset != -1) ? 5 : 0;
     }
 
     /* The variable is in the stack. */
@@ -619,6 +619,7 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
       write("lod 1 6 1", "R[r1] <- rvalue of RHS of assign expr(M[SP + 1]])");
       write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
     } else {
+      printf("Setting a class field\n");
     /* Check if varName in fields of class. Variable is in the heap*/
       varOffset = getOffsetOfVarInClass(classNumber, varName);
       /* Load address of this object(i.e. the dynamic caller object) */
@@ -709,6 +710,7 @@ void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
 
     /* The variable is in the stack. */
     if(varOffset != -1) {
+      printf("var off set in stack is: %d\n", varOffset);
       write("lod 1 7 -%d", "R[r1] <- rvalue of variable (M[FP - offset])", varOffset);
       write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)", varOffset);
     } else {
