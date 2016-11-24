@@ -234,8 +234,8 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     case METHOD_CALL_EXPR:
-//      codeGenMethodCallExprs(t, classNumber, methodNumber);
-//      break;
+      codeGenMethodCallExprs(t, classNumber, methodNumber);
+      break;
 
     case DOT_METHOD_CALL_EXPR:
       codeGenDotMethodCallExprs(t, classNumber, methodNumber);
@@ -832,6 +832,58 @@ void codeGenDotMethodCallExprs(const ASTree *t, int classNumber, int methodNumbe
   codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);  //top of stack = dynamic calling obj.
 
 
+  /*todo Check dynamic caller obj is not null */
+  // checkNullDereference();
+
+  int staticClassNum = t->staticClassNum;
+  int staticMemberNum = t->staticMemberNum;
+  /* 3. Push static class number to stack */
+  write("mov 1 %d", "R[r1] <- static class number", staticClassNum);
+  write("str 6 0 1", "M[SP] <- R[r1] (static class number)");
+
+  decSP();
+
+  /* 4. Push static member number to stack */
+  write("mov 1 %d", "R[r1] <- static method number", staticMemberNum);
+  write("str 6 -1 1", "M[SP] <- R[r1] (static class number)");
+
+  decSP();
+  /* codeGen method argument */
+  dotMethodCallNode = t->childrenTail;
+
+  /* 5. Push dynamic incoming argument to stack */
+  codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);
+
+  //todo update SP by num.
+//  write("mov 1 4", "R[r1] <- 4"); // from nos. 2 to 5 inclusive = 4 places to shift
+//  write("sub 6 6 1", "Move SP after static info");
+
+  /*todo call dynamic dispatcher/vtable */
+  // call dispatcher
+  write("jmp 0 #c%dm%d", "jump to method.", staticClassNum, staticMemberNum);
+  writeWithLabel("#%d: mov 0 0", "Return label landing for method", returnLabel);
+
+}
+
+void codeGenMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) {
+  ASTList *dotMethodCallNode = t->children;
+  int returnLabel = getNewLabelNumber();
+  printf("return label is: %d", returnLabel);
+  /* 1. Push #returnLabel to stack */
+  write("mov 1 #%d", "R[r1] <- #returnLabel", returnLabel);
+//  write("ptn 1", "debug: return address");
+  write("str 6 0 1", "push #returnLabel to stack");
+
+  decSP();
+  /* 2. Push the dynamic calling object's address to stack*/
+  /* Note: if new expr => top of stack is address in heap
+   *       if id expr => it has to be obj type, therefore rvalue = address of obj in heap */
+//  codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);  //top of stack = dynamic calling obj.
+  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
+  write("sub 1 7 1", "Calculate address of this obj");
+  write("str 6 0 1", "Address of this");
+
+  decSP();
   /*todo Check dynamic caller obj is not null */
   // checkNullDereference();
 
