@@ -22,6 +22,7 @@ typedef enum
 /* Global for the DISM output file */
 FILE *fout;
 unsigned int orExprEscapeLabel = 0;
+unsigned int decSPReturnLabel = 0;
 
 void codeGenNatLitExpr(ASTree*);
 void codeGenPrintExpr(ASTree*, int, int);
@@ -48,7 +49,7 @@ void codeGenNotExpr(const ASTree *, int, int);
 void genPrologueMain(void);
 void genEpilogueMain(void);
 void genPrologue(int, int);
-void genEpilogue(int, int);
+void genEpilogue();
 void genVTable();
 
 void codeGenBinaryExpr(const ASTree *t, int classNumber, int methodNumber);
@@ -163,13 +164,31 @@ void incHP(int i){
 
 /* Generate code that decrements the stack pointer */
 //todo move the checking part to a static location using jump
-void decSP(){
+/*void decSP(){
   write("mov 1 1", "R[r1] <- 1 (move immediate value)");
   write("sub 6 6 1", "SP--");
   write("blt 5 6 #%d", "Branch if HP < SP", getNewLabelNumber());
   write("mov 1 77", "error code 77 => out of stack memory");
   write("hlt 1", " out of stack memory! (SP < HP)");
   writeWithLabel("#%d: mov 0 0", "Landing for decSP", getLabelNumber());
+}*/
+
+void _decSP(){
+  writeWithLabel("#decSP: mov 0 0", "decSP()");
+  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
+  write("sub 6 6 1", "SP--");
+  write("blt 5 6 #%d", "Branch if HP < SP", getNewLabelNumber());
+  write("mov 1 77", "error code 77 => out of stack memory");
+  write("hlt 1", " out of stack memory! (SP < HP)");
+  writeWithLabel("#%d: mov 0 0", "Landing for decSP", getLabelNumber());
+  write("jmp 4 0", "Return from decSP", decSPReturnLabel);
+}
+
+void decSP(){
+  int returnLabel = getNewLabelNumber();
+  write("mov 4 #%d", "R[r1] <- #decSPReturnLabel", returnLabel);
+  write("jmp 0 #decSP", "jump to decSP.");
+  writeWithLabel("#%d: mov 0 0", "Return label landing for decSP", returnLabel);
 }
 
 /* Output code to check for a null value at the top of the stack.
@@ -342,7 +361,7 @@ void genPrologue(int classNumber, int methodNumber) {
 /* Generate DISM code as the epilogue to the given method or main
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
-void genEpilogue(int classNumber, int methodNumber){
+void genEpilogue(){
   /* Load method result (i.e. current top of stack) */
   write("lod 1 6 1", "R[r1] <- M[SP + 1] (result of the method)");
   /* Restore stack pointer to current FP . */
@@ -499,9 +518,10 @@ void generateDISM(FILE *outputFile) {
       /* genBody */
       codeGenExprs(currentMethod.bodyExprs, i, j);
       /* genEpilogue */
-      genEpilogue(i, j);
+      genEpilogue();
     }
   }
+  _decSP();
   if(createVTable){
     genVTable();
   }
@@ -874,7 +894,7 @@ void codeGenDotMethodCallExprs(const ASTree *t, int classNumber, int methodNumbe
   /* 5. Push dynamic incoming argument to stack */
   codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);
   /* call dynamic dispatcher/vtable */
-  write("jmp 0 #vtable", "jump to VTABLE.", staticClassNum, staticMemberNum);
+  write("jmp 0 #vtable", "jump to VTABLE.");
   writeWithLabel("#%d: mov 0 0", "Return label landing for method", returnLabel);
 }
 
