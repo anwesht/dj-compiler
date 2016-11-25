@@ -9,7 +9,9 @@ Files:
 7. typecheck.c
 8. symtbl.h
 9. symtbl.c
-10. makefile
+10. codegen.h
+11. codegen.c
+12. makefile
 
 Compilation:
 ============
@@ -17,6 +19,6 @@ $ make
 
 Usage:
 ======
-$ ./dj-tc <DJ/file/to/be/type-checked>
+$ ./dj2dism <DJ/file/to/be/compiled>
 
 
