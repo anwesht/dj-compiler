@@ -141,6 +141,17 @@ void incSP(){
   write("add 6 6 1", "SP++");
 }
 
+/* Generate code that increments the stack pointer by i */
+void incSPBy(int i){
+  write("mov 1 %d", "R[r1] <- Heap pointer increment value", i);
+  write("add 6 6 1", "Increment heap pointer");
+  write("mov 1 %d", "R[r1] <- MAX DISM ADDR", MAX_DISM_ADDR);
+  write("blt 6 1 #%d", "Branch if SP < MAX DISM ADDR", getNewLabelNumber());
+  write("mov 1 66", "error code 66 => DISM memory out of bounds");
+  write("hlt 1", " DISM memory out of bounds! (SP > MAX DISM)");
+  writeWithLabel("#%d: mov 0 0", "Landing for incSPBy", getLabelNumber());
+}
+
 /* Generate code that increments the heap pointer by i */
 void incHP(int i){
   write("mov 1 %d", "R[r1] <- Heap pointer increment value", i);
@@ -679,13 +690,14 @@ void codeGenForExpr(const ASTree *t, int classNumber, int methodNumber) {
 
   //incSP() => result of loop body not required any more??
 //  incSP();
+  incSPBy(3);
   /* CodeGen loop update */
   forNode = forNode->next;
   codeGenExpr(forNode->data, classNumber, methodNumber);
   write("jmp 0 #%d", "Jump to start of loop", loopLabel);
 
   writeWithLabel("#%d: mov 0 0", "End of loop landing", loopEndLabel);
-  incSP();
+//  incSP();
 }
 
 void codeGenOrExpr(const ASTree *t, int classNumber, int methodNumber) {
