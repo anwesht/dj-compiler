@@ -465,7 +465,7 @@ int typeCompExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
   int typeLeftOperand = typeExpr(compNode->data, classContainingExpr, methodContainingExpr);
   compNode = compNode->next;
   int typeRightOperand = typeExpr(compNode->data, classContainingExpr, methodContainingExpr);
-  if(typeLeftOperand < -1 || typeRightOperand < -1 ||
+  if(typeLeftOperand < -2 || typeRightOperand < -2 ||
     (!isSubtype(typeLeftOperand, typeRightOperand) && !isSubtype(typeRightOperand, typeLeftOperand))) {
     throwError("Type mismatch.", compNode->data->lineNumber);
   }
@@ -577,11 +577,7 @@ int getTypeOfVarInClass(ASTree *t, int currentClassNum, char *varName) {
   for(i = 0; i < currentClass.numVars; i += 1) {
     if(strcmp(varName, varList[i].varName) == 0){
       t->staticClassNum = currentClassNum;
-//      t->staticMemberNum = i;
-      // updating.
-      t->staticMemberNum = i + getNumFieldsInAllSuperClasses(currentClass.superclass);;
-      printf("static class num: %d\n", currentClassNum);
-      printf("static Member num: %d\n\n\n", i);
+      t->staticMemberNum = i + getNumFieldsInAllSuperClasses(currentClass.superclass);
       return varList[i].type;
     }
   }
@@ -591,13 +587,13 @@ int getTypeOfVarInClass(ASTree *t, int currentClassNum, char *varName) {
   return -3;
 }
 
+/* Get sum of all fields in super classes */
 int getNumFieldsInAllSuperClasses(int currentClassNum) {
   ClassDecl currentClass = classesST[currentClassNum];
   int numFields = currentClass.numVars;
   if(currentClass.superclass > 0) {   // Look for the variable in all classes
     numFields += getNumFieldsInAllSuperClasses(currentClass.superclass);
   }
-  printf("Num Fields : %d \n", numFields);
   return numFields;
 }
 
@@ -736,8 +732,6 @@ MethodDecl getMethodDeclInClass(ASTree *t, int currentClassNum, char *methodName
     if(strcmp(methodName, methodList[i].methodName) == 0){
       t->staticClassNum = currentClassNum;
       t->staticMemberNum = i;
-      printf("static class num: %d\n", currentClassNum);
-      printf("static Method num: %d\n\n\n", i);
       return methodList[i];
     }
   }
@@ -764,7 +758,8 @@ int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingE
   ifThenElseNode = ifThenElseNode->next;
   int typeOfElse = typeExprs(ifThenElseNode->data, classContainingExpr, methodContainingExpr);
 
-  if(typeOfIf < -1 || typeOfElse < -1 ||
+//  if(typeOfIf < -1 || typeOfElse < -1 ||
+  if(typeOfIf < -2 || typeOfElse < -2 ||
     (!isSubtype(typeOfIf, typeOfElse) && !isSubtype(typeOfElse, typeOfIf))) {
     throwError("Types of 'then' and 'else' branches mismatch.", ifThenElseNode->data->lineNumber);
   }
