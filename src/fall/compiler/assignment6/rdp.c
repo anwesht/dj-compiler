@@ -609,17 +609,36 @@ void printClassesST_() {
   }
 }
 
+void checkExtension(char *fileName) {
+  char *dot = strrchr(fileName, '.');
+  if(!dot || dot == fileName || strcmp(dot+1, "dj") != 0) {
+    printf("Error: Input filename does not match *.dj\n");
+    exit(-1);
+  }
+}
+
 int main( int argc, char **argv )
 {
-  if( argc != 2)
+  bool DEBUG = false;
+  if( argc != 2 && argc != 3)
   {
-    printf("Usage: dj2dism <file_name> \n");
+    printf("Usage: dj2dism <file_name> [-v]\n");
     exit(-1);
   }
 
-  char *fileName = argv[1];
+  if(argc == 3){
+    DEBUG = true;
+  }
 
-  printf("file name: %s \n", fileName );
+  char *fileName = argv[1];
+  checkExtension(fileName);
+
+  size_t len = strlen(fileName) + 2;
+  char outputFile[len];
+  memset(outputFile, '\0', sizeof(outputFile));
+  strncpy(outputFile, fileName, (strlen(fileName)-2));
+  strcat(outputFile, "dism");
+
   /** Open given file in read mode */
   fp = fopen( fileName, "r" );
   if (fp == NULL) {
@@ -627,55 +646,46 @@ int main( int argc, char **argv )
     exit(-1);
   }
 
-  char *outputFile = "outputDISM.dism";
-
-  printf("Output file name: %s \n", outputFile );
   /** Open given file in read mode */
   FILE *out = fopen(outputFile, "w" );
   if (out == NULL) {
     printf("Error Opening Output File : %s \n", outputFile );
     exit(-1);
   }
+  if(DEBUG) printf("file name: %s \n", outputFile );
 
-  bool DEBUG = false;
   /* parse the input program */
   ASTree *pgmAST = parse();
   /* Print AST */
   if(DEBUG) printAST(pgmAST);
 
-  printf("setting up smbtbl.\n");
   setupSymbolTables(pgmAST);
 
-//  printf("printing ast.\n");
-//  printAST(pgmAST);
-//  printClassesST_();
-//  printVarList_(mainBlockST, numMainBlockLocals);
-
-  printf("typechecking.\n");
   typecheckProgram();
 
-  printf("Generating code.\n");
   generateDISM(out);
+
   fclose(out);
+  if(DEBUG){
+    out = fopen(outputFile, "r");
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    int lineNo = 1;
 
-  out = fopen(outputFile, "r");
-  char *line = NULL;
-  size_t len = 0;
-  ssize_t read;
-  int lineNo = 1;
-
-  /** read all the lines till end of file
-    * getline() returns the length of current line read.
-    * automatically allocates a buffer for storing the line read.
-    * adjusts the size of the buffer as necessary.
-    */
-  while ( (read = getline( &line, &len, out )) != -1 ) {
-    printf("%d    %s", lineNo++, line);
+    /** read all the lines till end of file
+      * getline() returns the length of current line read.
+      * automatically allocates a buffer for storing the line read.
+      * adjusts the size of the buffer as necessary.
+      */
+    while ( (read = getline( &line, &len, out )) != -1 ) {
+      printf("%d    %s", lineNo++, line);
+    }
+    fclose(out);
   }
 
   /** Close the file */
   fclose(fp);
-  fclose(out);
 
   return 0;
 }

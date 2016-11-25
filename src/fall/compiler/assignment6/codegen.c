@@ -163,16 +163,6 @@ void incHP(int i){
 }
 
 /* Generate code that decrements the stack pointer */
-//todo move the checking part to a static location using jump
-/*void decSP(){
-  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
-  write("sub 6 6 1", "SP--");
-  write("blt 5 6 #%d", "Branch if HP < SP", getNewLabelNumber());
-  write("mov 1 77", "error code 77 => out of stack memory");
-  write("hlt 1", " out of stack memory! (SP < HP)");
-  writeWithLabel("#%d: mov 0 0", "Landing for decSP", getLabelNumber());
-}*/
-
 void _decSP(){
   writeWithLabel("#decSP: mov 0 0", "decSP()");
   write("mov 1 1", "R[r1] <- 1 (move immediate value)");
@@ -184,6 +174,7 @@ void _decSP(){
   write("jmp 4 0", "Return from decSP", decSPReturnLabel);
 }
 
+/* Calls the function that decrements SP */
 void decSP(){
   int returnLabel = getNewLabelNumber();
   write("mov 4 #%d", "R[r1] <- #decSPReturnLabel", returnLabel);
@@ -323,7 +314,6 @@ void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
 }
 
 void genPrologueMain() {
-  printf("generating main block prologue\n");
   write("mov 7 %d", "initialize FP", MAX_DISM_ADDR);
   write("mov 6 %d", "initialize SP", MAX_DISM_ADDR);
   write("mov 5 1", "initialize HP");
@@ -334,7 +324,6 @@ void genPrologueMain() {
     write("str 6 0 0", "M[SP] <- R[r1]");
     decSP();
   }
-  //todo need to check out of memory stuff.
 }
 
 /* Generate DISM code as the prologue to the given method or main
@@ -378,7 +367,6 @@ void genEpilogue(){
 }
 
 void genEpilogueMain() {
-  printf("generating main block epilogue\n");
   write("hlt 0", "NORMAL TERMINATION AT END OF MAIN BLOCK");
 }
 
@@ -395,8 +383,6 @@ void genBody(int classNumber, int methodNumber);
  This method assumes that dynamicType is a subtype of staticClass. */
 void getDynamicMethodInfo(int staticClass, int staticMethod,
                           int dynamicType, int *dynamicClassToCall, int *dynamicMethodToCall){
-  printf(" getting dynamic method info = sc=%d, sm=%d, dt=%d \n", staticClass, staticMethod, dynamicType);
-
   if(staticClass == dynamicType){
     *dynamicClassToCall = staticClass;
     *dynamicMethodToCall = staticMethod;
@@ -408,8 +394,6 @@ void getDynamicMethodInfo(int staticClass, int staticMethod,
 }
 
 void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicClass, int *dynamicMethod) {
-  printf(" getting dynamic info recursive = %d method : %s \n", currentClassNum, methodName);
-
   ClassDecl currentClass = classesST[currentClassNum];
   int i;
   MethodDecl *methodList = currentClass.methodList;
@@ -417,8 +401,6 @@ void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicCl
     if(strcmp(methodName, methodList[i].methodName) == 0){
       *dynamicClass = currentClassNum;
       *dynamicMethod = i;
-      printf("in function dynamicClass = %d \n", *dynamicClass);
-      printf("in function dynamicMethod = %d \n", *dynamicMethod);
       return;
     }
   }
@@ -684,7 +666,6 @@ int getNumObjectFields(int currentClassNum) {
   if(currentClass.superclass > 0) {   // Look for the variable in all classes
     numFields += getNumObjectFields(currentClass.superclass);
   }
-  printf("Num Fields : %d \n", numFields);
   return numFields;
 }
 
@@ -836,8 +817,6 @@ void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
   dotAssignNode = t->children;
   codeGenExpr(dotAssignNode->data, classNumber, methodNumber);  //Top of stack = address of e1.
   checkNullDereference();
-  //use static class num??
-//  int staticClassNum = t->staticClassNum;
   int staticMemberNum = t->staticMemberNum;
 
   /* Get type of object */
@@ -875,8 +854,6 @@ void codeGenDotMethodCallExprs(const ASTree *t, int classNumber, int methodNumbe
 
   int staticClassNum = t->staticClassNum;
   int staticMemberNum = t->staticMemberNum;
-  printf("STATIC CALL NUM = %d\n", staticClassNum);
-  printf("STATIC member NUM = %d\n", staticMemberNum);
   /* 3. Push static class number to stack */
   write("mov 1 %d", "R[r1] <- static class number", staticClassNum);
   write("str 6 0 1", "M[SP] <- R[r1] (static class number)");
@@ -903,7 +880,6 @@ void codeGenMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) 
   int returnLabel = getNewLabelNumber();
   /* 1. Push #returnLabel to stack */
   write("mov 1 #%d", "R[r1] <- #returnLabel", returnLabel);
-//  write("ptn 1", "debug: return address");
   write("str 6 0 1", "push #returnLabel to stack");
 
   decSP();
