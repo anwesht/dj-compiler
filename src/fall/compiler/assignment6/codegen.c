@@ -308,9 +308,10 @@ void genPrologueMain() {
   for(i = 0; i < numMainBlockLocals; i += 1) {
 //      write("mov 1 0", "Initializing Main Locals");
     write("str 6 0 0", "M[SP] <- R[r1]");
+    decSP();
   }
-  write("mov 1 %d", "R[r1] <- number of main block locals", numMainBlockLocals);
-  write("sub 6 6 1", "Move SP after main locals");
+//  write("mov 1 %d", "R[r1] <- number of main block locals", numMainBlockLocals);
+//  write("sub 6 6 1", "Move SP after main locals");
   //todo need to check out of memory stuff.
 }
 
@@ -425,37 +426,8 @@ void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicCl
   }
 }
 
-/* Emit code for the program's vtable, beginning at label #VTABLE.
- The vtable jumps (i.e., dispatches) to code based on
- (1) the dynamic calling object's address (at M[SP+4]),
- (2) the calling object's static type (at M[SP+3]), and
- (3) the static method number (at M[SP+2]). */
-/*void genVTable(){
-  *//* 1. load dynamic caller to register *//*
-  write("lod 1 7 -1", "R[r1] <- dynamic caller");
-  *//* 2. load static class to register *//*
-  write("lod 2 7 -2", "R[r2] <- static class");
-  *//* 3. load static method to register *//*
-  write("lod 3 7 -3", "R[r3] <- static member");
-
-  int classNum, dynClassNum, methodNum;
-  for(classNum = 1; classNum < numClasses; classNum += 1){
-    writeWithLabel("#sc%d: mov 0 0", "Landing for static class.", classNum);
-    for(dynClassNum = 1; dynClassNum < numClasses; dynClassNum += 1){
-      for(methodNum = 0;  methodNum < classesST[classNum].numMethods; methodNum += 1){
-        if(isSubtype(dynClassNum, classNum)){
-          int *dynamicClassToCall = 0;
-          int *dynamicMethodToCall = 0;
-          getDynamicMethodInfo(classNum, methodNum, dynClassNum, dynamicClassToCall, dynamicMethodToCall);
-
-        }
-      }
-    }
-  }
-}*/
-
 void genVTable(){
-  printf("generating vtable \n");
+  printf("generating vtable numclasses :  %d\n", numClasses);
   int classNum, dynClassNum, methodNum;
 
   writeWithLabel("#vtable: mov 0 0", "vtable");
@@ -487,19 +459,19 @@ void genVTable(){
 
   printf("HERE!\n");
 
-  for(classNum = 1; classNum < numClasses; classNum += 1) {
-    ClassDecl currentClass = classesST[classNum];
-    printf("num classes = %d   classNUm %d\n", numClasses, classNum);
+  for(dynClassNum = 1; dynClassNum < numClasses; dynClassNum += 1) {
+//    ClassDecl currentClass = classesST[dynClassNum];
+    printf("num classes = %d   classNUm %d\n", numClasses, dynClassNum);
 
-    writeWithLabel("#dc%d: mov 0 0", "dynamic caller landing", classNum);
-    write("mov 4 %d", "R[r4] <- immediate value", classNum);
-    write("beq 2 4 #dc%dsc%d", "if static class == R[r4], goto #sc", classNum, classNum);
-    ClassDecl super = classesST[classNum];
+    writeWithLabel("#dc%d: mov 0 0", "dynamic caller landing", dynClassNum);
+    write("mov 4 %d", "R[r4] <- immediate value", dynClassNum);
+    write("beq 2 4 #dc%dsc%d", "if static class == R[r4], goto #sc", dynClassNum, dynClassNum);
+    ClassDecl super = classesST[dynClassNum];
     while(super.superclass > 0) {
       printf("super class %d\n", super.superclass);
 
       write("mov 4 %d", "R[r4] <- immediate value", super.superclass);
-      write("beq 2 4 #dc%dsc%d", "if static class == R[r4], goto #sc", classNum, super.superclass);
+      write("beq 2 4 #dc%dsc%d", "if static class == R[r4], goto #sc", dynClassNum, super.superclass);
       printf("after %d\n", super.superclass);
 
       super = classesST[super.superclass];
@@ -512,37 +484,12 @@ void genVTable(){
 
   printf("HERE   111!\n");
 
-
-  /*for(classNum = 1; classNum < numClasses; classNum += 1) {
-    ClassDecl currentClass = classesST[classNum];
-    ClassDecl super = currentClass;
-
-    for(methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
-      writeWithLabel("#dc%dsc%d: mov 0 0", "dynamic and static class landing", classNum, classNum);
-      write("mov 4 %d", "R[r4] <- immediate value", methodNum);
-      write("beq 3 4 #dc%dsc%dm%d", "if static method == R[r4], goto #cdscm", classNum, classNum,
-            methodNum);
-      while(super.superclass > 0) {
-        writeWithLabel("#dc%dsc%d: mov 0 0", "dynamic and static class landing", classNum, super.superclass);
-        write("mov 4 %d", "R[r4] <- immediate value", methodNum);
-        write("beq 3 4 #dc%dsc%dm%d", "if static method == R[r4], goto #cdscm", classNum, super.superclass,
-              methodNum);
-        super = classesST[super.superclass];
-      }
-    }
-    write("mov 1 99", "error code 99 => vtable entry not found.");
-    write("hlt 1", "error code 99 => vtable entry not found.");
-  }*/
-
   for(classNum = 1; classNum < numClasses; classNum += 1) {
     ClassDecl currentClass = classesST[classNum];
 
     for (dynClassNum = 1; dynClassNum < numClasses; dynClassNum += 1) {
       if(isSubtype(dynClassNum, classNum)) {
         for (methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
-          int dynamicClassToCall;
-          int dynamicMethodToCall;
-
           writeWithLabel("#dc%dsc%d: mov 0 0", "dynamic and static class landing", dynClassNum, classNum);
           write("mov 4 %d", "R[r4] <- immediate value", methodNum);
           write("beq 3 4 #dc%dsc%dm%d", "if static method == R[r4], goto #cdscm", dynClassNum, classNum,
@@ -557,32 +504,6 @@ void genVTable(){
 
   printf("HERE 2222!\n");
 
-  /*for(classNum = 1; classNum < numClasses; classNum += 1) {
-    ClassDecl currentClass = classesST[classNum];
-    ClassDecl super = currentClass;
-
-
-    for(methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
-      int dynamicClassToCall ;
-      int dynamicMethodToCall;
-      writeWithLabel("#dc%dsc%dm%d: mov 0 0", "dynamic, static class and method landing", classNum, classNum, methodNum);
-      getDynamicMethodInfo(classNum, methodNum, classNum, &dynamicClassToCall, &dynamicMethodToCall);
-
-      write("jmp 0 #c%dm%d", "jump to correct class method.", dynamicClassToCall, dynamicMethodToCall);
-
-      while(super.superclass > 0) {
-        writeWithLabel("#dc%dsc%dm%d: mov 0 0", "dynamic, static class and method landing", classNum,
-                       super.superclass, methodNum);
-
-        getDynamicMethodInfo(classNum, methodNum, classNum, &dynamicClassToCall, &dynamicMethodToCall);
-        write("jmp 0 #c%dm%d", "jump to correct class method.", dynamicClassToCall, dynamicMethodToCall);
-
-        super = classesST[super.superclass];
-      }
-      write("mov 1 99", "error code 99 => vtable entry not found.");
-      write("hlt 1", "error code 99 => vtable entry not found.");
-    }
-  }*/
   for(classNum = 1; classNum < numClasses; classNum += 1) {
     ClassDecl currentClass = classesST[classNum];
 
@@ -600,26 +521,6 @@ void genVTable(){
         write("hlt 1", "error code 99 => vtable entry not found.");
       }
     }
-    /*for(methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
-      int dynamicClassToCall ;
-      int dynamicMethodToCall;
-      writeWithLabel("#dc%dsc%dm%d: mov 0 0", "dynamic, static class and method landing", classNum, classNum, methodNum);
-      getDynamicMethodInfo(classNum, methodNum, classNum, &dynamicClassToCall, &dynamicMethodToCall);
-
-      write("jmp 0 #c%dm%d", "jump to correct class method.", dynamicClassToCall, dynamicMethodToCall);
-
-      while(super.superclass > 0) {
-        writeWithLabel("#dc%dsc%dm%d: mov 0 0", "dynamic, static class and method landing", classNum,
-                       super.superclass, methodNum);
-
-        getDynamicMethodInfo(classNum, methodNum, classNum, &dynamicClassToCall, &dynamicMethodToCall);
-        write("jmp 0 #c%dm%d", "jump to correct class method.", dynamicClassToCall, dynamicMethodToCall);
-
-        super = classesST[super.superclass];
-      }
-      write("mov 1 99", "error code 99 => vtable entry not found.");
-      write("hlt 1", "error code 99 => vtable entry not found.");
-    }*/
   }
 }
 
@@ -633,9 +534,13 @@ void generateDISM(FILE *outputFile) {
   /* CodeGen all methods of all classes with label*/
   int i, j;
   printf("Num classes : %d", numClasses);
+
+  bool createVTable = false;
+
   for(i = 1; i < numClasses; i += 1) {
     ClassDecl currentClass = classesST[i];
     for(j = 0; j < currentClass.numMethods; j += 1) {
+      createVTable = true;
       MethodDecl currentMethod = currentClass.methodList[j];
       writeWithLabel("#c%dm%d: mov 0 0", "Class method landing", i, j);
       /* genPrologue */
@@ -646,7 +551,9 @@ void generateDISM(FILE *outputFile) {
       genEpilogue(i, j);
     }
   }
-  genVTable();
+  if(createVTable){
+    genVTable();
+  }
 }
 
 void codeGenNatLitExpr(ASTree *t) {
@@ -771,13 +678,14 @@ void codeGenForExpr(const ASTree *t, int classNumber, int methodNumber) {
   codeGenExprs(forExprBodyNode->data, classNumber, methodNumber);
 
   //incSP() => result of loop body not required any more??
-  incSP();
+//  incSP();
   /* CodeGen loop update */
   forNode = forNode->next;
   codeGenExpr(forNode->data, classNumber, methodNumber);
   write("jmp 0 #%d", "Jump to start of loop", loopLabel);
 
   writeWithLabel("#%d: mov 0 0", "End of loop landing", loopEndLabel);
+  incSP();
 }
 
 void codeGenOrExpr(const ASTree *t, int classNumber, int methodNumber) {
@@ -861,7 +769,8 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
     /* Check if varName in method locals */
     if(varOffset == -1){
       varOffset = getOffsetOfVarInLocalsST(currentMethod.localST, currentMethod.numLocals,varName);
-      varOffset += (varOffset != -1) ? 5 : 0;
+      /* 5 fields added in stack for method frames, + 1 as varNum starts from 0 */
+      varOffset += (varOffset != -1) ? 6 : 0;
     }
 
     /* The variable is in the stack. */
@@ -955,14 +864,16 @@ void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
     /* Check if varName in method locals */
     if(varOffset == -1){
       varOffset = getOffsetOfVarInLocalsST(currentMethod.localST, currentMethod.numLocals,varName);
-      varOffset += (varOffset != -1) ? 5 : 0;   // 5 fields added in stack for method frames
+      /* 5 fields added in stack for method frames, + 1 as varNum starts from 0 */
+      varOffset += (varOffset != -1) ? 6 : 0;
     }
 
     /* The variable is in the stack. */
     if(varOffset != -1) {
       printf("var off set in stack is: %d\n", varOffset);
       write("lod 1 7 -%d", "R[r1] <- rvalue of variable (M[FP - offset])", varOffset);
-      write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)", varOffset);
+//      write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)", ++varOffset);
+      write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)");
     } else {
       /* Check if varName in fields of class. Variable is in the heap*/
       varOffset = getOffsetOfVarInClass(classNumber, varName);
