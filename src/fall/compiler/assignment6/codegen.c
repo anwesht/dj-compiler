@@ -1,6 +1,8 @@
-//
-// Created by Anwesh Tuladhar on 11/20/16.
-//
+/**
+ * Created by atuladhar on 11/20/16.
+ * Pledge: I pledge my Honor that I have not cheated, and will not cheat, on this assignment
+ * Name: Anwesh Tuladhar
+ */
 #include "codegen.h"
 #include "symtbl.h"
 #include "typecheck.h"
@@ -726,23 +728,6 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
     }
   }
 }
-
-/*int getOffsetOfVarInClass(int currentClassNum, char *varName){
-  ClassDecl currentClass = classesST[currentClassNum];
-  int i;
-  VarDecl *varList = currentClass.varList;
-  for(i = 0; i < currentClass.numVars; i += 1) {
-    if(strcmp(varName, varList[i].varName) == 0) {
-      return i;
-    }
-  }
-  if(currentClass.superclass > 0) {
-    return getOffsetOfVarInClass(currentClass.superclass, varName);
-  } else {
-    _internalCGerror("Var not found in any class.");
-    exit(-1);
-  }
-}*/
 
 int getOffsetOfVarInClass(int currentClassNum, char *varName){
   ClassDecl currentClass = classesST[currentClassNum];

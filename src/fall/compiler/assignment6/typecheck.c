@@ -48,7 +48,6 @@ int typeForExpr(ASTree*, int, int);
 int typePrintExpr(ASTree*, int, int);
 int typeGreaterExpr(ASTree*, int, int);
 
-//MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
 MethodDecl getMethodDeclInClass(ASTree*, int, char*, int);
 int getNumFieldsInAllSuperClasses(int);
 
@@ -353,22 +352,9 @@ int typeExpr(ASTree *t, int classContainingExpr, int methodContainingExpr) {
     case NOT_EXPR:
       return typeNotExpr(t, classContainingExpr, methodContainingExpr);
 
-    /*case AST_ID:
-      return typeId(t, classContainingExpr, methodContainingExpr);
-
-    case ID_EXPR:
-    {
-      ASTree *astId = t->children->data;
-      return typeExpr(astId, classContainingExpr, methodContainingExpr);
-    }*/
     case AST_ID:
     case ID_EXPR:
       return typeId(t, t, classContainingExpr, methodContainingExpr);
-//
-//    {
-//      ASTree *astId = t->children->data;
-//      return typeExpr(astId, classContainingExpr, methodContainingExpr);
-//    }
 
     case DOT_ID_EXPR:
       return typeDotIdExpr(t, classContainingExpr, methodContainingExpr);
@@ -758,7 +744,6 @@ int typeIfThenElseExpr(ASTree *t, int classContainingExpr, int methodContainingE
   ifThenElseNode = ifThenElseNode->next;
   int typeOfElse = typeExprs(ifThenElseNode->data, classContainingExpr, methodContainingExpr);
 
-//  if(typeOfIf < -1 || typeOfElse < -1 ||
   if(typeOfIf < -2 || typeOfElse < -2 ||
     (!isSubtype(typeOfIf, typeOfElse) && !isSubtype(typeOfElse, typeOfIf))) {
     throwError("Types of 'then' and 'else' branches mismatch.", ifThenElseNode->data->lineNumber);
