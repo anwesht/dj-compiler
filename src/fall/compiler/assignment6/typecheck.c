@@ -50,6 +50,7 @@ int typeGreaterExpr(ASTree*, int, int);
 
 //MethodDecl getMethodDeclInClass(ClassDecl, char*, int);
 MethodDecl getMethodDeclInClass(ASTree*, int, char*, int);
+int getNumFieldsInAllSuperClasses(int);
 
 static void _throwError(char *message, int errorLine) {
   printf(RED"\nSemantic analysis error on line %d >>> "NORMAL, errorLine);
@@ -576,7 +577,9 @@ int getTypeOfVarInClass(ASTree *t, int currentClassNum, char *varName) {
   for(i = 0; i < currentClass.numVars; i += 1) {
     if(strcmp(varName, varList[i].varName) == 0){
       t->staticClassNum = currentClassNum;
-      t->staticMemberNum = i;
+//      t->staticMemberNum = i;
+      // updating.
+      t->staticMemberNum = i + getNumFieldsInAllSuperClasses(currentClass.superclass);;
       printf("static class num: %d\n", currentClassNum);
       printf("static Member num: %d\n\n\n", i);
       return varList[i].type;
@@ -586,6 +589,16 @@ int getTypeOfVarInClass(ASTree *t, int currentClassNum, char *varName) {
     return getTypeOfVarInClass(t, currentClass.superclass, varName);
   }
   return -3;
+}
+
+int getNumFieldsInAllSuperClasses(int currentClassNum) {
+  ClassDecl currentClass = classesST[currentClassNum];
+  int numFields = currentClass.numVars;
+  if(currentClass.superclass > 0) {   // Look for the variable in all classes
+    numFields += getNumFieldsInAllSuperClasses(currentClass.superclass);
+  }
+  printf("Num Fields : %d \n", numFields);
+  return numFields;
 }
 
 /** Checks for the variable name in the provided VarDecl list (Symbol table)
