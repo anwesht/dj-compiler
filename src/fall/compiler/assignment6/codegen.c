@@ -17,6 +17,10 @@ typedef enum
   true
 } bool;
 
+/* Global for the DISM output file */
+FILE *fout;
+unsigned int orExprEscapeLabel = 0;
+
 void codeGenNatLitExpr(ASTree*);
 void codeGenPrintExpr(ASTree*, int, int);
 void codeGenReadExpr(void);
@@ -55,10 +59,7 @@ bool checkOrExprEscapeLabel(void);
 int getOffsetOfVarInLocalsST(const VarDecl*, int, char *varName);
 int getOffsetOfVarInClass(int, char *varName);
 void getDynamicInfoInClass(int, char*, int*, int*);
-
-/* Global for the DISM output file */
-FILE *fout;
-unsigned int orExprEscapeLabel = 0;
+int getNumObjectFields(int);
 
 void setOrExprEscapeLabel(){
   if(orExprEscapeLabel == 0) {
@@ -131,10 +132,6 @@ void internalCGerror(char *msg){
   exit(-1);
 }
 
-/* Using the global classesST, calculate the total number of fields,
- including inherited fields, in an object of the given type */
-int getNumObjectFields(int type);
-
 /* Generate code that increments the stack pointer */
 void incSP(){
   write("mov 1 1", "R[r1] <- 1 (move immediate value)");
@@ -165,7 +162,6 @@ void incHP(int i){
 /* Generate code that decrements the stack pointer */
 //todo move the checking part to a static location using jump
 void decSP(){
-//  fprintf(fout, "        mov 1 1    ;  R[r1] <- 1 (move immediate value)");
   write("mov 1 1", "R[r1] <- 1 (move immediate value)");
   write("sub 6 6 1", "SP--");
   write("blt 5 6 #%d", "Branch if HP < SP", getNewLabelNumber());
@@ -225,7 +221,6 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       codeGenNotExpr(t, classNumber, methodNumber);
       break;
 
-//    case AST_ID: //not an expr. no need to code gen
     case ID_EXPR:
       codeGenIdExpr(t, classNumber, methodNumber);
       break;
@@ -293,8 +288,6 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
  If classNumber < 0 then methodNumber may be anything and we assume
  we are generating code for the program's main block. */
 void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
-  printf("generating code Exprs class: %d, method: %d", classNumber, methodNumber);
-
   ASTList *currentNode = expList->children;
   while(true) {
     codeGenExpr(currentNode->data, classNumber, methodNumber);
@@ -317,12 +310,9 @@ void genPrologueMain() {
   write("mov 0 0", "BEGIN METHOD/MAIN-BLOCK BODY");
   int i;
   for(i = 0; i < numMainBlockLocals; i += 1) {
-//      write("mov 1 0", "Initializing Main Locals");
     write("str 6 0 0", "M[SP] <- R[r1]");
     decSP();
   }
-//  write("mov 1 %d", "R[r1] <- number of main block locals", numMainBlockLocals);
-//  write("sub 6 6 1", "Move SP after main locals");
   //todo need to check out of memory stuff.
 }
 
@@ -331,20 +321,15 @@ void genPrologueMain() {
  assume we are generating code for the program's main block. */
 void genPrologue(int classNumber, int methodNumber) {
   MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
-
-  printf("genPrologue some class\n");
   /* 1. Store old frame pointer in stack.*/
   write("str 6 0 7", "M[SP] <- Value of old FP");
-
   /* 2. Update Frame pointer to new FP */
   write("mov 1 5", "R[r1] <- 5 (immediate value)");
   write("add 7 6 1", "R[r7] (FP) <- R[r6 (SP) + 5]");
-
   /* 3. Store all method locals */
   int i;
   int numLocals = currentMethod.numLocals;
   for(i = 0; i < numLocals; i += 1) {
-//    write("mov 1 0", "Initializing Main Locals");
     write("str 6 -%d 0", "M[SP] <- R[r1]", ++i); // +1 for Old FP, after which we have not updated SP
   }
   /* Update SP */
@@ -356,29 +341,19 @@ void genPrologue(int classNumber, int methodNumber) {
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
 void genEpilogue(int classNumber, int methodNumber){
-  printf("gen Epilogue some class\n");
-  MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
-
   /* Load method result (i.e. current top of stack) */
   write("lod 1 6 1", "R[r1] <- M[SP + 1] (result of the method)");
-
   /* Restore stack pointer to current FP . */
   write("add 6 7 0", "R[r6](SP) <- R[r7] (FP)");
-
   /* Save return address to jump to later */
   write("lod 2 7 0", "R[r1] <- R[r7] (return address/FP)");
-//  write("add 2 7 0", "R[r1] <- R[r7] (return address/FP)");
-
   /* Write result to return address */
   write("str 6 0 1", "M[SP] <- R[r1] (result of the method)");
   decSP();
-
   /* Restore FP (old FP should hold the address of OLD FP)*/
   write("lod 7 7 -5", "R[r7](FP) <- M[FP - 5] (Old FP)");
-//  write("ptn 2", "debug: return address");
   /* Jump to return address */
   write("jmp 2 0", "jump to return address(R[r2])");
-//  write("hlt 1", "jump to return address(R[r2])");
 }
 
 void genEpilogueMain() {
@@ -409,9 +384,6 @@ void getDynamicMethodInfo(int staticClass, int staticMethod,
     char *methodName = classesST[staticClass].methodList[staticMethod].methodName;
     getDynamicInfoInClass(dynamicType, methodName, dynamicClassToCall, dynamicMethodToCall);
   }
-  printf(" dynamicClass = %d \n", *dynamicClassToCall);
-  printf(" dynamicMethod = %d \n", *dynamicMethodToCall);
-
 }
 
 void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicClass, int *dynamicMethod) {
@@ -438,70 +410,43 @@ void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicCl
 }
 
 void genVTable(){
-  printf("generating vtable numclasses :  %d\n", numClasses);
   int classNum, dynClassNum, methodNum;
-
   writeWithLabel("#vtable: mov 0 0", "vtable");
-
-//  /* 1. load dynamic caller to register */
-//  write("lod 2 7 -1", "R[r1] <- dynamic caller");
-//  write("lod 1 2 0", "M[addr of obj] <- class type tag");
-//
-//  /* 2. load static class to register */
-//  write("lod 2 7 -2", "R[r1] <- static class");
-//  /* 3. load static method to register */
-//  write("lod 3 7 -3", "R[r3] <- static member");
   /* 1. load dynamic caller to register */
   write("lod 2 6 4", "R[r1] <- dynamic caller");
   write("lod 1 2 0", "M[addr of obj] <- class type tag");
-
   /* 2. load static class to register */
   write("lod 2 6 3", "R[r1] <- static class");
   /* 3. load static method to register */
   write("lod 3 6 2", "R[r3] <- static member");
 
   for(classNum = 1; classNum < numClasses; classNum += 1){
-    printf("num classes = %d   classNUm %d\n", numClasses, classNum);
     write("mov 4 %d", "R[r4] <- immediate value", classNum);
     write("beq 1 4 #dc%d", "if dynamic caller == R[r4], goto #dc", classNum);
   }
   write("mov 1 99", "error code 99 => vtable entry not found.");
   write("hlt 1", "error code 99 => vtable entry not found.");
 
-  printf("HERE!\n");
-
   for(dynClassNum = 1; dynClassNum < numClasses; dynClassNum += 1) {
-//    ClassDecl currentClass = classesST[dynClassNum];
-    printf("num classes = %d   classNUm %d\n", numClasses, dynClassNum);
-
     writeWithLabel("#dc%d: mov 0 0", "dynamic caller landing", dynClassNum);
     write("mov 4 %d", "R[r4] <- immediate value", dynClassNum);
     write("beq 2 4 #dc%dsc%d", "if static class == R[r4], goto #sc", dynClassNum, dynClassNum);
     ClassDecl super = classesST[dynClassNum];
     while(super.superclass > 0) {
-      printf("super class %d\n", super.superclass);
-
       write("mov 4 %d", "R[r4] <- immediate value", super.superclass);
       write("beq 2 4 #dc%dsc%d", "if static class == R[r4], goto #sc", dynClassNum, super.superclass);
-      printf("after %d\n", super.superclass);
-
       super = classesST[super.superclass];
-      printf("lasts %d\n", super.superclass);
-
     }
     write("mov 1 99", "error code 99 => vtable entry not found.");
     write("hlt 1", "error code 99 => vtable entry not found.");
   }
 
-  printf("HERE   111!\n");
-
   for(classNum = 1; classNum < numClasses; classNum += 1) {
     ClassDecl currentClass = classesST[classNum];
-
     for (dynClassNum = 1; dynClassNum < numClasses; dynClassNum += 1) {
       if(isSubtype(dynClassNum, classNum)) {
+        writeWithLabel("#dc%dsc%d: mov 0 0", "dynamic and static class landing", dynClassNum, classNum);
         for (methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
-          writeWithLabel("#dc%dsc%d: mov 0 0", "dynamic and static class landing", dynClassNum, classNum);
           write("mov 4 %d", "R[r4] <- immediate value", methodNum);
           write("beq 3 4 #dc%dsc%dm%d", "if static method == R[r4], goto #cdscm", dynClassNum, classNum,
                 methodNum);
@@ -512,12 +457,8 @@ void genVTable(){
     }
   }
 
-
-  printf("HERE 2222!\n");
-
   for(classNum = 1; classNum < numClasses; classNum += 1) {
     ClassDecl currentClass = classesST[classNum];
-
     for(dynClassNum = 1; dynClassNum < numClasses; dynClassNum += 1){
       if(isSubtype(dynClassNum, classNum)){
         for(methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
@@ -541,11 +482,8 @@ void generateDISM(FILE *outputFile) {
   genPrologueMain();
   codeGenExprs(mainExprs, -1, -1);
   genEpilogueMain();
-
   /* CodeGen all methods of all classes with label*/
   int i, j;
-  printf("Num classes : %d", numClasses);
-
   bool createVTable = false;
 
   for(i = 1; i < numClasses; i += 1) {
@@ -674,8 +612,6 @@ void codeGenForExpr(const ASTree *t, int classNumber, int methodNumber) {
   int loopEndLabel = getNewLabelNumber();
   /* CodeGen loop initializer */
   codeGenExpr(forNode->data, classNumber, methodNumber);
-//  write("lod 1 6 1", "Load loop initializer");
-  //todo: incSp() ??
 
   writeWithLabel("#%d: mov 0 0", "Loop Label.", loopLabel);
   /* CodeGen loop test */
@@ -687,17 +623,13 @@ void codeGenForExpr(const ASTree *t, int classNumber, int methodNumber) {
   /* CodeGen loop body */
   ASTList *forExprBodyNode = t->childrenTail;
   codeGenExprs(forExprBodyNode->data, classNumber, methodNumber);
-
-  //incSP() => result of loop body not required any more??
-//  incSP();
+  /* Move SP to initialiser location. */
   incSPBy(3);
   /* CodeGen loop update */
   forNode = forNode->next;
   codeGenExpr(forNode->data, classNumber, methodNumber);
   write("jmp 0 #%d", "Jump to start of loop", loopLabel);
-
   writeWithLabel("#%d: mov 0 0", "End of loop landing", loopEndLabel);
-//  incSP();
 }
 
 void codeGenOrExpr(const ASTree *t, int classNumber, int methodNumber) {
@@ -722,12 +654,13 @@ void codeGenOrExpr(const ASTree *t, int classNumber, int methodNumber) {
   }
 }
 
-int getNumberOfFieldsInClass(int currentClassNum) {
+/* Using the global classesST, calculate the total number of fields,
+ including inherited fields, in an object of the given type */
+int getNumObjectFields(int currentClassNum) {
   ClassDecl currentClass = classesST[currentClassNum];
   int numFields = currentClass.numVars;
-
   if(currentClass.superclass > 0) {   // Look for the variable in all classes
-    numFields += getNumberOfFieldsInClass(currentClass.superclass);
+    numFields += getNumObjectFields(currentClass.superclass);
   }
   return numFields;
 }
@@ -739,8 +672,7 @@ int getNumberOfFieldsInClass(int currentClassNum) {
 void codeGenNewExpr(const ASTree *t) {
   ASTList *newNode = t->children;
   int newClassNumber = classNameToNumber(newNode->data->idVal);
-  int numFields = getNumberOfFieldsInClass(newClassNumber);
-  printf("number of fields in current class is: %d \n", numFields);
+  int numFields = getNumObjectFields(newClassNumber);
   int i;
   for(i = 0; i < numFields; i += 1){
     write("str 5 %d 0", "Reserve location for field", i);
@@ -751,8 +683,6 @@ void codeGenNewExpr(const ASTree *t) {
   write("mov 1 1", "R[r1] <- immediate value 1");
   write("sub 1 5 1", "R[r1] <- M[HP - 1]");
   write("str 6 0 1", "M[SP] <- Pointer to new object");
-  //debug print.
-//  write("ptn 1", "debug: pointer to new object");
   decSP();
 }
 
@@ -767,12 +697,7 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
     varOffset = getOffsetOfVarInLocalsST(mainBlockST, numMainBlockLocals,varName);
     write("lod 1 6 1", "R[r1] <- rvalue of RHS of assign expr(M[SP + 1]])");
     write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
-    //debug
-//    write("ptn 1", "debug: rvalue of RHS of assign expr.");
-
   } else {
-    printf("assign expr in class!!!");
-//    write("ptn 7", "debug: local in call. FP");
     MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
     /* Check if varName is a param */
     if(strcmp(varName, currentMethod.paramName) == 0){
@@ -784,13 +709,11 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
       /* 5 fields added in stack for method frames, + 1 as varNum starts from 0 */
       varOffset += (varOffset != -1) ? 6 : 0;
     }
-
     /* The variable is in the stack. */
     if(varOffset != -1) {
       write("lod 1 6 1", "R[r1] <- rvalue of RHS of assign expr(M[SP + 1]])");
       write("str 7 -%d 1", "M[FP - varOffset] <- R[r1] (rvalue of RHS of assign expr)", varOffset);
     } else {
-      printf("Setting a class field\n");
       /* Check if varName in fields of class. Variable is in the heap*/
       varOffset = getOffsetOfVarInClass(classNumber, varName);
       /* Load address of this object(i.e. the dynamic caller object) */
@@ -801,7 +724,6 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
       write("str 1 -%d 2", "M[addr of obj - varOffset] <- R[r1] (rvalue of RHS of dot assign expr)", ++varOffset);
     }
   }
-//  decSP();
 }
 
 int getOffsetOfVarInClass(int currentClassNum, char *varName){
@@ -810,7 +732,6 @@ int getOffsetOfVarInClass(int currentClassNum, char *varName){
   VarDecl *varList = currentClass.varList;
   for(i = 0; i < currentClass.numVars; i += 1) {
     if(strcmp(varName, varList[i].varName) == 0) {
-      printf("var offset in class is: %d \n", i);
       return i;
     }
   }
@@ -832,18 +753,11 @@ int getOffsetOfVarInClass(int currentClassNum, char *varName){
  */
 int getOffsetOfVarInLocalsST(const VarDecl *varList, int numVars, char *varName) {
   int i;
-  printf("search for var: %s\n", varName);
-  printf("numVars : %d\n", numVars);
-
   for(i = 0; i < numVars; i += 1) {
-    printf("current var: %s\n", varList[i].varName);
     if(strcmp(varName, varList[i].varName) == 0) {
-      printf("found matching var.\n");
       return i;
     }
   }
-  /*_internalCGerror("Local Variable not found");
-  exit(-1);*/
   return -1;
 }
 
@@ -859,17 +773,9 @@ void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
     }
     write("lod 1 7 -%d", "R[r1] <- rvalue of variable", varOffset);
     write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)");
-    //debug
-//    write("ptn 1", "debug: rvalue of variable");
   } else {
-    printf("id expr in class!!!");
-//    write("ptn 7", "debug: id expr in class. FP");
-    printf("local in class!!!\n");
-//    write("ptn 7", "debug: local in call. FP");
     MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
     /* Check if varName is a param */
-    printf("Var name is: %s", varName);
-    printf(" name is: %s", currentMethod.paramName);
     if(strcmp(varName, currentMethod.paramName) == 0){
       varOffset = 4;
     }
@@ -882,9 +788,7 @@ void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
 
     /* The variable is in the stack. */
     if(varOffset != -1) {
-      printf("var off set in stack is: %d\n", varOffset);
       write("lod 1 7 -%d", "R[r1] <- rvalue of variable (M[FP - offset])", varOffset);
-//      write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)", ++varOffset);
       write("str 6 0 1", "M[SP] <- R[r1] (rvalue of variable)");
     } else {
       /* Check if varName in fields of class. Variable is in the heap*/
@@ -904,15 +808,12 @@ void codeGenIdExpr(const ASTree *t, int classNumber, int methodNumber) {
 void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
   /* Right associative. CodeGen RHS first */
   ASTList *dotAssignNode = t->childrenTail;
-
   codeGenExpr(dotAssignNode->data, classNumber, methodNumber);  //Top of stack = rvalue of RHS
-
   dotAssignNode = t->children;
-
   codeGenExpr(dotAssignNode->data, classNumber, methodNumber);  //Top of stack = address of e1.
   checkNullDereference();
   //use static class num??
-  int staticClassNum = t->staticClassNum;
+//  int staticClassNum = t->staticClassNum;
   int staticMemberNum = t->staticMemberNum;
 
   /* Get type of object */
@@ -921,9 +822,6 @@ void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
   // First member has number = 0. need to offset +1.
   write("str 1 -%d 2", "M[addr of obj - varOffset] <- R[r1] (rvalue of RHS of dot assign expr)", ++staticMemberNum);
   incSP();  // Top of stack now has rvalue of RHS.
-  //debug
-//  write("ptn 1", "debug: addr of LHS obj.");
-//  write("ptn 2", "debug: rvalue of RHS of dot assign expr.");
 }
 
 void codeGenDotIdExpr(const ASTree *t, int classNumber, int methodNumber){
@@ -940,20 +838,15 @@ void codeGenDotIdExpr(const ASTree *t, int classNumber, int methodNumber){
 void codeGenDotMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) {
   ASTList *dotMethodCallNode = t->children;
   int returnLabel = getNewLabelNumber();
-  printf("return label is: %d", returnLabel);
   /* 1. Push #returnLabel to stack */
   write("mov 1 #%d", "R[r1] <- #returnLabel", returnLabel);
-//  write("ptn 1", "debug: return address");
   write("str 6 0 1", "push #returnLabel to stack");
-
   decSP();
   /* 2. Push the dynamic calling object's address to stack*/
   /* Note: if new expr => top of stack is address in heap
    *       if id expr => it has to be obj type, therefore rvalue = address of obj in heap */
-  codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);  //top of stack = dynamic calling obj.
-
-
-  /*todo Check dynamic caller obj is not null */
+  codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);  //top of stack = dynamic calling obj address.
+  /* Check dynamic caller obj is not null */
   checkNullDereference();
 
   int staticClassNum = t->staticClassNum;
@@ -976,23 +869,14 @@ void codeGenDotMethodCallExprs(const ASTree *t, int classNumber, int methodNumbe
 
   /* 5. Push dynamic incoming argument to stack */
   codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);
-
-  //todo update SP by num.
-//  write("mov 1 4", "R[r1] <- 4"); // from nos. 2 to 5 inclusive = 4 places to shift
-//  write("sub 6 6 1", "Move SP after static info");
-
-  /*todo call dynamic dispatcher/vtable */
-  // call dispatcher
-//  write("jmp 0 #c%dm%d", "jump to method.", staticClassNum, staticMemberNum);
+  /* call dynamic dispatcher/vtable */
   write("jmp 0 #vtable", "jump to VTABLE.", staticClassNum, staticMemberNum);
   writeWithLabel("#%d: mov 0 0", "Return label landing for method", returnLabel);
-
 }
 
 void codeGenMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) {
   ASTList *dotMethodCallNode = t->children;
   int returnLabel = getNewLabelNumber();
-  printf("return label is: %d", returnLabel);
   /* 1. Push #returnLabel to stack */
   write("mov 1 #%d", "R[r1] <- #returnLabel", returnLabel);
 //  write("ptn 1", "debug: return address");
@@ -1002,17 +886,11 @@ void codeGenMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) 
   /* 2. Push the dynamic calling object's address to stack*/
   /* Note: if new expr => top of stack is address in heap
    *       if id expr => it has to be obj type, therefore rvalue = address of obj in heap */
-//  codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);  //top of stack = dynamic calling obj.
- /* write("mov 1 1", "R[r1] <- 1 (move immediate value)");
-  write("sub 1 7 1", "Calculate address of this obj");
-  write("str 6 0 1", "Address of this");*/
-
-//  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
   write("lod 1 7 -1", "Find address of this obj");
   write("str 6 0 1", "Address of this");
 
   decSP();
-  /*todo Check dynamic caller obj is not null */
+  /* Check dynamic caller obj is not null */
   checkNullDereference();
 
   int staticClassNum = t->staticClassNum;
@@ -1034,24 +912,15 @@ void codeGenMethodCallExprs(const ASTree *t, int classNumber, int methodNumber) 
   /* 5. Push dynamic incoming argument to stack */
   codeGenExpr(dotMethodCallNode->data, classNumber, methodNumber);
 
-  //todo update SP by num.
-//  write("mov 1 4", "R[r1] <- 4"); // from nos. 2 to 5 inclusive = 4 places to shift
-//  write("sub 6 6 1", "Move SP after static info");
-
-  /*todo call dynamic dispatcher/vtable */
-  // call dispatcher
-  /* write("jmp 0 #c%dm%d", "jump to method.", staticClassNum, staticMemberNum);
-  writeWithLabel("#%d: mov 0 0", "Return label landing for method", returnLabel); */
+  /* call dynamic dispatcher/vtable */
   write("jmp 0 #vtable", "jump to VTABLE.");
   writeWithLabel("#%d: mov 0 0", "Return label landing for method", returnLabel);
-
 }
 
 void codeGenThisExpr() {
   /* Load FP - 1 = this object.*/
-  write("mov 1 1", "R[r1] <- 1 (move immediate value)");
-  write("sub 1 7 1", "Calculate address of this obj");
-  write("str 6 0 1", "SP <- Address of this");
+  write("lod 1 7 -1", "Find address of this obj");
+  write("str 6 0 1", "Address of this");
   decSP();
 }
 
