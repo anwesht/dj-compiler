@@ -173,6 +173,7 @@ void checkNullDereference(){
   write("beq 1 0 #%d", "if expr == 0 goto => nullLabel", nullLabel);
   write("jmp 0 #%d", "not null. jmp to end label.", endLabel);
   writeWithLabel("#%d: mov 0 0", "nullLabel landing", nullLabel);
+  write("mov 1 88", "error code 88 => null-pointer dereference");
   write("hlt 1", "error code 88 => null-pointer dereference");
   writeWithLabel("#%d: mov 0 0", "OK to dereference", endLabel);
 }
@@ -402,7 +403,7 @@ void getDynamicMethodInfo(int staticClass, int staticMethod,
 }
 
 void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicClass, int *dynamicMethod) {
-  printf(" getting dynamic info recursive = %d \n", currentClassNum);
+  printf(" getting dynamic info recursive = %d method : %s \n", currentClassNum, methodName);
 
   ClassDecl currentClass = classesST[currentClassNum];
   int i;
@@ -413,6 +414,7 @@ void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicCl
       *dynamicMethod = i;
       printf("in function dynamicClass = %d \n", *dynamicClass);
       printf("in function dynamicMethod = %d \n", *dynamicMethod);
+      return;
     }
   }
   if(currentClass.superclass > 0) {   // Look for the method in all super classes
@@ -511,7 +513,7 @@ void genVTable(){
   printf("HERE   111!\n");
 
 
-  for(classNum = 1; classNum < numClasses; classNum += 1) {
+  /*for(classNum = 1; classNum < numClasses; classNum += 1) {
     ClassDecl currentClass = classesST[classNum];
     ClassDecl super = currentClass;
 
@@ -530,12 +532,32 @@ void genVTable(){
     }
     write("mov 1 99", "error code 99 => vtable entry not found.");
     write("hlt 1", "error code 99 => vtable entry not found.");
+  }*/
+
+  for(classNum = 1; classNum < numClasses; classNum += 1) {
+    ClassDecl currentClass = classesST[classNum];
+
+    for (dynClassNum = 1; dynClassNum < numClasses; dynClassNum += 1) {
+      if(isSubtype(dynClassNum, classNum)) {
+        for (methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
+          int dynamicClassToCall;
+          int dynamicMethodToCall;
+
+          writeWithLabel("#dc%dsc%d: mov 0 0", "dynamic and static class landing", dynClassNum, classNum);
+          write("mov 4 %d", "R[r4] <- immediate value", methodNum);
+          write("beq 3 4 #dc%dsc%dm%d", "if static method == R[r4], goto #cdscm", dynClassNum, classNum,
+                methodNum);
+        }
+        write("mov 1 99", "error code 99 => vtable entry not found.");
+        write("hlt 1", "error code 99 => vtable entry not found.");
+      }
+    }
   }
 
 
   printf("HERE 2222!\n");
 
-  for(classNum = 1; classNum < numClasses; classNum += 1) {
+  /*for(classNum = 1; classNum < numClasses; classNum += 1) {
     ClassDecl currentClass = classesST[classNum];
     ClassDecl super = currentClass;
 
@@ -560,8 +582,45 @@ void genVTable(){
       write("mov 1 99", "error code 99 => vtable entry not found.");
       write("hlt 1", "error code 99 => vtable entry not found.");
     }
-  }
+  }*/
+  for(classNum = 1; classNum < numClasses; classNum += 1) {
+    ClassDecl currentClass = classesST[classNum];
 
+    for(dynClassNum = 1; dynClassNum < numClasses; dynClassNum += 1){
+      if(isSubtype(dynClassNum, classNum)){
+        for(methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
+          int dynamicClassToCall ;
+          int dynamicMethodToCall;
+          writeWithLabel("#dc%dsc%dm%d: mov 0 0", "dynamic, static class and method landing", dynClassNum,
+                         classNum, methodNum);
+          getDynamicMethodInfo(classNum, methodNum, dynClassNum, &dynamicClassToCall, &dynamicMethodToCall);
+          write("jmp 0 #c%dm%d", "jump to correct class method.", dynamicClassToCall, dynamicMethodToCall);
+        }
+        write("mov 1 99", "error code 99 => vtable entry not found.");
+        write("hlt 1", "error code 99 => vtable entry not found.");
+      }
+    }
+    /*for(methodNum = 0; methodNum < currentClass.numMethods; methodNum += 1) {
+      int dynamicClassToCall ;
+      int dynamicMethodToCall;
+      writeWithLabel("#dc%dsc%dm%d: mov 0 0", "dynamic, static class and method landing", classNum, classNum, methodNum);
+      getDynamicMethodInfo(classNum, methodNum, classNum, &dynamicClassToCall, &dynamicMethodToCall);
+
+      write("jmp 0 #c%dm%d", "jump to correct class method.", dynamicClassToCall, dynamicMethodToCall);
+
+      while(super.superclass > 0) {
+        writeWithLabel("#dc%dsc%dm%d: mov 0 0", "dynamic, static class and method landing", classNum,
+                       super.superclass, methodNum);
+
+        getDynamicMethodInfo(classNum, methodNum, classNum, &dynamicClassToCall, &dynamicMethodToCall);
+        write("jmp 0 #c%dm%d", "jump to correct class method.", dynamicClassToCall, dynamicMethodToCall);
+
+        super = classesST[super.superclass];
+      }
+      write("mov 1 99", "error code 99 => vtable entry not found.");
+      write("hlt 1", "error code 99 => vtable entry not found.");
+    }*/
+  }
 }
 
 void generateDISM(FILE *outputFile) {
