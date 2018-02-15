@@ -13,6 +13,10 @@ Files:
 11. codegen.c
 12. makefile
 
+Folder:
+=======
+1. lexer-parser-generator (Contains dj.l and dj.y)
+
 Compilation:
 ============
 $ make

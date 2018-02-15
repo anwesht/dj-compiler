@@ -2,11 +2,12 @@
  * Created by atuladhar on 11/20/16.
  * Pledge: I pledge my Honor that I have not cheated, and will not cheat, on this assignment
  * Name: Anwesh Tuladhar
+ * Level III submission.
  */
 #include "codegen.h"
 #include "symtbl.h"
 #include "typecheck.h"
-#include <stdarg.h>
+#include <stdarg.h>   //for va_list
 #include <string.h>
 
 #define MAX_DISM_ADDR 65535
@@ -21,8 +22,10 @@ typedef enum
 
 /* Global for the DISM output file */
 FILE *fout;
-unsigned int orExprEscapeLabel = 0;
-unsigned int decSPReturnLabel = 0;
+unsigned int orExprEscapeLabel = 0;   //for short-ciruit behaviour of or
+unsigned int decSPReturnLabel = 0;    //for returining from decSP
+/* Global to remember the next unique label number to use */
+unsigned int labelNumber = 1;
 
 void codeGenNatLitExpr(ASTree*);
 void codeGenPrintExpr(ASTree*, int, int);
@@ -64,20 +67,24 @@ int getOffsetOfVarInClass(int, char *varName);
 void getDynamicInfoInClass(int, char*, int*, int*);
 int getNumObjectFields(int);
 
+/* Set or short-circuit label */
 void setOrExprEscapeLabel(){
   if(orExprEscapeLabel == 0) {
     orExprEscapeLabel = getNewLabelNumber();
   }
 }
 
+/* Reset or short-circuit label */
 void resetOrExprEscapeLabel(){
   orExprEscapeLabel = 0;
 }
 
+/* get current or short-circuit label */
 int getOrExprEscapeLabel(){
   return orExprEscapeLabel;
 }
 
+/* Check if or short-circuit label needs to be created */
 bool checkOrExprEscapeLabel(){
   if(getOrExprEscapeLabel() == 0) {
     return true;
@@ -98,20 +105,19 @@ void _write(char *label, const char* dismFormat, const char* comment, va_list ar
   fprintf(fout, "    ; %s\n", comment);
 }
 
+/* Call _write with space for labels */
 void write(const char* dismFormat, const char* comment, ...) {
   va_list args;
   va_start(args, comment);
   _write("        ", dismFormat, comment, args);
 }
 
+/* Use when DISM instruction has label */
 void writeWithLabel(const char* dismFormat, const char* comment, ...){
   va_list args;
   va_start(args, comment);
   _write("", dismFormat, comment, args);
 }
-
-/* Global to remember the next unique label number to use */
-unsigned int labelNumber = 1;
 
 /* Get and increment label number */
 unsigned int getNewLabelNumber() {
@@ -130,6 +136,7 @@ void _internalCGerror(char *msg){
   printf("\n");
 }
 
+/* Throw error and exit */
 void internalCGerror(char *msg){
   _internalCGerror(msg);
   exit(-1);
@@ -290,8 +297,7 @@ void codeGenExpr(ASTree *t, int classNumber, int methodNumber){
       break;
 
     default:
-      printf("Unknown Expression.");
-      exit(-1);
+      internalCGerror("Unknown Expression.");
   }
 }
 
@@ -304,7 +310,7 @@ void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
   while(true) {
     codeGenExpr(currentNode->data, classNumber, methodNumber);
     currentNode = currentNode->next;
-    /* This saves the result of evaluating only the final expression of the list. */
+    /* Only save the result of final expression of the list. */
     if(currentNode != NULL && currentNode->data != NULL){
       incSP();
     } else {
@@ -313,6 +319,9 @@ void codeGenExprs(ASTree *expList, int classNumber, int methodNumber) {
   }
 }
 
+/** Generate prologue for main
+  * Initialises FP, SP, HP
+  * Allocates space for main block locals and initialises to 0*/
 void genPrologueMain() {
   write("mov 7 %d", "initialize FP", MAX_DISM_ADDR);
   write("mov 6 %d", "initialize SP", MAX_DISM_ADDR);
@@ -329,6 +338,24 @@ void genPrologueMain() {
 /* Generate DISM code as the prologue to the given method or main
  block. If classNumber < 0 then methodNumber may be anything and we
  assume we are generating code for the program's main block. */
+//void genPrologue(int classNumber, int methodNumber) {
+//  MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
+//  /* 1. Store old frame pointer in stack.*/
+//  write("str 6 0 7", "M[SP] <- Value of old FP");
+//  /* 2. Update Frame pointer to new FP */
+//  write("mov 1 5", "R[r1] <- 5 (immediate value)");
+//  write("add 7 6 1", "R[r7] (FP) <- R[r6 (SP) + 5]");
+//  /* 3. Store all method locals */
+//  int i;
+//  int numLocals = currentMethod.numLocals;
+//  for(i = 0; i < numLocals; i += 1) {
+//    write("str 6 -%d 0", "M[SP] <- R[r1]", ++i); // +1 for Old FP, after which we have not updated SP
+//  }
+//  /* Update SP */
+//  write("mov 1 %d", "R[r1] <- number of method locals", ++numLocals);
+//  write("sub 6 6 1", "Move SP after method locals");
+//}
+
 void genPrologue(int classNumber, int methodNumber) {
   MethodDecl currentMethod = classesST[classNumber].methodList[methodNumber];
   /* 1. Store old frame pointer in stack.*/
@@ -336,15 +363,17 @@ void genPrologue(int classNumber, int methodNumber) {
   /* 2. Update Frame pointer to new FP */
   write("mov 1 5", "R[r1] <- 5 (immediate value)");
   write("add 7 6 1", "R[r7] (FP) <- R[r6 (SP) + 5]");
+  decSP();
   /* 3. Store all method locals */
   int i;
   int numLocals = currentMethod.numLocals;
   for(i = 0; i < numLocals; i += 1) {
-    write("str 6 -%d 0", "M[SP] <- R[r1]", ++i); // +1 for Old FP, after which we have not updated SP
+    write("str 6 0 0", "M[SP] <- R[r1]");
+    decSP();
   }
   /* Update SP */
-  write("mov 1 %d", "R[r1] <- number of method locals", ++numLocals);
-  write("sub 6 6 1", "Move SP after method locals");
+//  write("mov 1 %d", "R[r1] <- number of method locals", ++numLocals);
+//  write("sub 6 6 1", "Move SP after method locals");
 }
 
 /* Generate DISM code as the epilogue to the given method or main
@@ -370,11 +399,6 @@ void genEpilogueMain() {
   write("hlt 0", "NORMAL TERMINATION AT END OF MAIN BLOCK");
 }
 
-/* Generate DISM code for the given method or main block.
- If classNumber < 0 then methodNumber may be anything and we assume
- we are generating code for the program's main block. */
-void genBody(int classNumber, int methodNumber);
-
 /* Map a given (1) static class number, (2) a method number defined
  in that class, and (3) a dynamic object's type to:
  (a) the dynamic class number and (b) the dynamic method number that
@@ -393,6 +417,13 @@ void getDynamicMethodInfo(int staticClass, int staticMethod,
   }
 }
 
+/** Finds the given methodName in the currentClass or in the super classes
+    and sets the dynamicClass and dynamicMethod Numbers
+ * @param currentClassNum => current class in which to look for the method
+ * @param methodName => methodName to look for
+ * @param dynamicClass  => pointer to dynamicClass number
+ * @param dynamicMethod  => pointer to dynamicMethod number
+ */
 void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicClass, int *dynamicMethod) {
   ClassDecl currentClass = classesST[currentClassNum];
   int i;
@@ -412,6 +443,14 @@ void getDynamicInfoInClass(int currentClassNum, char *methodName, int *dynamicCl
   }
 }
 
+/** Generate the dynamic dispatcher code.
+ * Vtable takes the static member number, static class number and dynamic caller
+ * and calls the correct class's correct function.
+ * Expects:
+ *  SP + 2 = static member number
+ *  SP + 3 = static class number
+ *  SP + 4 = dynamic caller
+ */
 void genVTable(){
   int classNum, dynClassNum, methodNum;
   writeWithLabel("#vtable: mov 0 0", "vtable");
@@ -479,6 +518,10 @@ void genVTable(){
   }
 }
 
+/**
+ * Main interface for codegenerator
+ * @param outputFile => Writes DISM to this file.
+ */
 void generateDISM(FILE *outputFile) {
   /* Set global output file pointer */
   fout = outputFile;
@@ -724,12 +767,18 @@ void codeGenAssignExpr(const ASTree *t, int classNumber, int methodNumber){
       write("lod 1 7 -1", "R[r1] <- M[FP -1] (address of e");
       /* Load the RHS value */
       write("lod 2 6 1", "R[r2] <- rvalue of assign expr(M[SP + 1]])");
-      // First member has number = 0. need to offset +1.
+      /* First member has number = 0. need to offset +1. */
       write("str 1 -%d 2", "M[addr of obj - varOffset] <- R[r1] (rvalue of RHS of dot assign expr)", ++varOffset);
     }
   }
 }
 
+/**
+ * Returns the offset to a variable in a class, including all the inherited fields.
+ * @param currentClassNum
+ * @param varName
+ * @return
+ */
 int getOffsetOfVarInClass(int currentClassNum, char *varName){
   ClassDecl currentClass = classesST[currentClassNum];
   int i;
@@ -822,7 +871,7 @@ void codeGenDotAssignExpr(const ASTree *t, int classNumber, int methodNumber) {
   /* Get type of object */
   write("lod 1 6 1", "R[r1] <- address of e");
   write("lod 2 6 2", "R[r2] <- rvalue of RHS");
-  // First member has number = 0. need to offset +1.
+  /* First member has number = 0. need to offset +1. */
   write("str 1 -%d 2", "M[addr of obj - varOffset] <- R[r1] (rvalue of RHS of dot assign expr)", ++staticMemberNum);
   incSP();  // Top of stack now has rvalue of RHS.
 }
